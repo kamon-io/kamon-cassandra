@@ -30,6 +30,7 @@ lazy val root = (project in file("."))
   .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.300"  % "compile;test")
   .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
   .settings(resolvers += Resolver.mavenLocal)
+  .settings(javaOptions in Test := Seq("-Dcassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing"))
   .settings(
       libraryDependencies ++=
         compileScope(kamonCore, cassandraDriver, scalaExtension) ++

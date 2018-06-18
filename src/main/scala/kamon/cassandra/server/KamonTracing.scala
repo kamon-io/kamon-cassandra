@@ -1,3 +1,18 @@
+/* =========================================================================================
+ * Copyright © 2013-2018 the kamon project <http://kamon.io/>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License") you may not use this file
+ * except in compliance with the License. You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the
+ * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific language governing permissions
+ * and limitations under the License.
+ * =========================================================================================
+ */
+
 package kamon.cassandra.server
 
 import java.net.InetAddress
@@ -21,7 +36,6 @@ class KamonTracing extends Tracing {
   override def newSession(sessionId: UUID, traceType: TraceType, customPayload: util.Map[String, ByteBuffer]): UUID = {
     if(traceType == TraceType.NONE) super.newSession(sessionId, traceType, customPayload)
     else {
-      println("KamonTracing-inside::newSession " + sessionId + " traceType " + traceType + " customPayload " + customPayload)
       val traceState  = new KamonTraceState(coordinator, sessionId, traceType, customPayload)
 
       set(traceState)
@@ -31,7 +45,6 @@ class KamonTracing extends Tracing {
   }
 
   override def begin(request: String, client: InetAddress, parameters: util.Map[String, String]): TraceState = {
-    println("KamonTracing::begin" + " request " + request + " client: " + client + " parameters " + parameters)
     val state = get().asInstanceOf[KamonTraceState]
     val incomingContext = decodeContextFrom(state.customPayload)
 
@@ -40,6 +53,7 @@ class KamonTracing extends Tracing {
       .withMetricTag("span.kind", "server")
       .withTag("http.url", client.getHostAddress)
       .withTag("cassandra.request", request)
+      .withTag("cassandra.query", parameters.getOrDefault("query", "unknown-query"))
       .withTag("cassandra.session_id", state.sessionId.toString)
       .start()
 

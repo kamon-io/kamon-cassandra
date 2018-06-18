@@ -33,38 +33,58 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, WordSpec}
 class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
   with MetricInspection with Reconfigure with OptionValues {
 
+  System.setProperty("cassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing", classOf[KamonTracing].getName)
+
   "the CassandraServerTracingInstrumentation" should {
-    "generate Spans on calls to .executeQuery() in prepared statements" in {
+    "does not generate Spans when tracing is disabled" in {
+      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").bind())
 
-      // By default, B3 style is used, so instrumented clients do something like this
+      eventually(timeout(3 seconds)) {
+        reporter.nextSpan() shouldBe None
+      }
+    }
 
-      val payload: util.Map[String, ByteBuffer] = new util.LinkedHashMap[String, ByteBuffer]()
-      payload.put("X-B3-TraceId", Charset.forName("UTF-8").encode("463ac35c9f6413ad"))
-      payload.put("X-B3-ParentSpanId", Charset.forName("UTF-8").encode("463ac35c9f6413ad"))
-      payload.put("X-B3-SpanId", Charset.forName("UTF-8").encode("72485a3953bb6124"))
-      payload.put("X-B3-Sampled", Charset.forName("UTF-8").encode("1"))
-
-//      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'pepe' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
-      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'pepe' ALLOW FILTERING").enableTracing().setOutgoingPayload(new util.LinkedHashMap()).bind())
+    "generate Spans when tracing is enabled" in {
+      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().bind())
 
       eventually(timeout(3 seconds)) {
         val span = reporter.nextSpan().value
         span.operationName shouldBe "QUERY"
         span.tags("span.kind") shouldBe TagValue.String("server")
-//        span.tags("db.statement").toString should include("SELECT * FROM Address where Nr = 3")
-//        reporter.nextSpan() shouldBe None
+      }
+    }
+
+    "generate Spans when tracing is enabled and contains payload" in {
+      // By default, B3 style is used, so instrumented clients do something like this
+      val payload = new util.LinkedHashMap[String, ByteBuffer]()
+      payload.put("X-B3-TraceId", encodeToByteBuffer("463ac35c9f6413ad"))
+      payload.put("X-B3-ParentSpanId", encodeToByteBuffer("463ac35c9f6413ad"))
+      payload.put("X-B3-SpanId", encodeToByteBuffer("72485a3953bb6124"))
+      payload.put("X-B3-Sampled", encodeToByteBuffer("1"))
+
+      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
+
+      eventually(timeout(3 seconds)) {
+        val span = reporter.nextSpan().value
+        span.operationName shouldBe "QUERY"
+        span.tags("span.kind") shouldBe TagValue.String("server")
+        span.tags("cassandra.query") shouldBe TagValue.String("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING")
       }
     }
   }
 
+
+  private def encodeToByteBuffer(value:String):ByteBuffer = {
+    Charset.forName("UTF-8").encode("463ac35c9f6413ad")
+  }
 
   var registration: Registration = _
   var session:Session = _
   val reporter = new TestSpanReporter()
 
   override protected def beforeAll(): Unit = {
-//    println(classOf[KamonTracing].getName)
 //    System.setProperty("cassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing", classOf[KamonTracing].getName)
+
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
     enableFastSpanFlushing()
     sampleAlways()
@@ -72,16 +92,13 @@ class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers w
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
     session.execute("DROP KEYSPACE IF EXISTS sync_test")
-    session.execute(
-      "CREATE KEYSPACE sync_test WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':3}")
+    session.execute("CREATE KEYSPACE sync_test WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':3}")
     session.execute("CREATE TABLE   sync_test.users ( id UUID PRIMARY KEY, name text )")
     session.execute("INSERT INTO sync_test.users (id, name) values (uuid(), 'alice')")
-    session.execute("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING")
 
   }
 
   override protected def afterAll(): Unit = {
-    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
     registration.cancel()
   }
 }
