@@ -25,14 +25,30 @@ val lombok              = "org.projectlombok"         % "lombok"                
 
 
 lazy val root = (project in file("."))
+  .settings(noPublishing: _*)
+  .aggregate(cassandraClient, cassandraServer)
+
+lazy val cassandraClient = (project in file("kamon-cassandra-client"))
   .enablePlugins(JavaAgent)
   .settings(name := "kamon-cassandra")
   .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.300"  % "compile;test")
   .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
   .settings(resolvers += Resolver.mavenLocal)
-  .settings(javaOptions in Test := Seq("-Dcassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing"))
   .settings(
       libraryDependencies ++=
         compileScope(kamonCore, cassandraDriver, scalaExtension) ++
-        providedScope(lombok, cassandraAll) ++
+        providedScope(lombok) ++
         testScope(cassandraUnit, kamonTestkit, scalatest, slf4jApi, logbackClassic))
+
+
+lazy val cassandraServer = (project in file("kamon-cassandra-server"))
+  .settings(name := "kamon-cassandra")
+  .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
+  .settings(resolvers += Resolver.mavenLocal)
+  .settings(fork in Test := true)
+  .settings(javaOptions in Test := Seq("-Dcassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing"))
+  .settings(
+        libraryDependencies ++=
+          compileScope(kamonCore, cassandraDriver, scalaExtension) ++
+            providedScope(lombok, cassandraAll) ++
+            testScope(cassandraUnit, kamonTestkit, scalatest, slf4jApi, logbackClassic))
