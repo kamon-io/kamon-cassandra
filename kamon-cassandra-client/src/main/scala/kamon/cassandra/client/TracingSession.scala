@@ -23,6 +23,8 @@ import com.google.common.base.Function
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import kamon.Kamon
 
+import scala.util.{Failure, Success, Try}
+
 class TracingSession(underlying: Session) extends AbstractSession {
 
   override def getLoggedKeyspace: String =
@@ -57,16 +59,22 @@ class TracingSession(underlying: Session) extends AbstractSession {
       .withTag("cassandra.keyspace", statement.getKeyspace)
       .start()
 
-      val statementWitSpan = attachSpanToStatement(clientSpan, statement)
+      val statementWithSpan = attachSpanToStatement(clientSpan, statement)
 
-      val future = underlying.executeAsync(statementWitSpan)
+      val future = Try(underlying.executeAsync(statementWithSpan)) match {
+        case Success(resultSetFuture) => resultSetFuture
+        case Failure(cause) =>
+          clientSpan.addError(cause.getMessage, cause)
+          clientSpan.finish()
+          throw cause
+      }
 
       Futures.addCallback(future ,new FutureCallback[ResultSet] {
         override def onSuccess(result: ResultSet): Unit =
           clientSpan.finish()
 
-        override def onFailure(t: Throwable): Unit = {
-          clientSpan.addError(t.getMessage, t)
+        override def onFailure(cause: Throwable): Unit = {
+          clientSpan.addError(cause.getMessage, cause)
           clientSpan.finish()
         }
       })
