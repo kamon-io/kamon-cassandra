@@ -27,7 +27,6 @@ import org.apache.cassandra.tracing.Tracing.TraceType
 import org.apache.cassandra.tracing.{TraceState, Tracing}
 import org.apache.cassandra.utils.FBUtilities
 
-
 class KamonTracing extends Tracing {
   private val coordinator = FBUtilities.getLocalAddress
 
@@ -46,10 +45,10 @@ class KamonTracing extends Tracing {
 
   override def begin(request: String, client: InetAddress, parameters: util.Map[String, String]): TraceState = {
     val state = get().asInstanceOf[KamonTraceState]
-    val incomingContext = decodeContextFrom(state.customPayload)
+    val clientSpan = decodeSpanFrom(state.customPayload)
 
     val serverSpan = Kamon.buildSpan(state.traceType.name())
-      .asChildOf(incomingContext.get(Span.ContextKey))
+      .asChildOf(clientSpan)
       .withMetricTag("span.kind", "server")
       .withTag("http.url", client.getHostAddress)
       .withTag("cassandra.request", request)
@@ -57,7 +56,7 @@ class KamonTracing extends Tracing {
       .withTag("cassandra.session_id", state.sessionId.toString)
       .start()
 
-    state.setScope(Kamon.storeContext(incomingContext.withKey(Span.ContextKey, serverSpan)))
+    state.setScope(Kamon.storeContext(Kamon.currentContext().withKey(Span.ContextKey, serverSpan)))
     state.setSpan(serverSpan)
     state
   }

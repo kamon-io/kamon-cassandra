@@ -16,13 +16,14 @@
 package kamon.cassandra.instrumentation
 
 import java.nio.ByteBuffer
-import java.nio.charset.Charset
 import java.util
 
 import com.datastax.driver.core.Session
 import kamon.Kamon
 import kamon.cassandra.server.KamonTracing
+import kamon.context.Context
 import kamon.testkit.{MetricInspection, Reconfigure, TestSpanReporter}
+import kamon.trace.Span
 import kamon.trace.Span.TagValue
 import kamon.util.Registration
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
@@ -55,12 +56,9 @@ class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers w
     }
 
     "generate Spans when tracing is enabled and contains payload" in {
-      // By default, B3 style is used, so instrumented clients do something like this
+      val encodedSpan = Context.create(Span.ContextKey, Kamon.buildSpan("client-span").start())
       val payload = new util.LinkedHashMap[String, ByteBuffer]()
-      payload.put("X-B3-TraceId", encodeToByteBuffer("463ac35c9f6413ad"))
-      payload.put("X-B3-ParentSpanId", encodeToByteBuffer("463ac35c9f6413ad"))
-      payload.put("X-B3-SpanId", encodeToByteBuffer("72485a3953bb6124"))
-      payload.put("X-B3-Sampled", encodeToByteBuffer("1"))
+      payload.put("kamon-client-span", Kamon.contextCodec().Binary.encode(encodedSpan))
 
       session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
 
@@ -73,18 +71,11 @@ class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers w
     }
   }
 
-
-  private def encodeToByteBuffer(value:String):ByteBuffer = {
-    Charset.forName("UTF-8").encode("463ac35c9f6413ad")
-  }
-
   var registration: Registration = _
   var session:Session = _
   val reporter = new TestSpanReporter()
 
   override protected def beforeAll(): Unit = {
-//    System.setProperty("cassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing", classOf[KamonTracing].getName)
-
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
     enableFastSpanFlushing()
     sampleAlways()
