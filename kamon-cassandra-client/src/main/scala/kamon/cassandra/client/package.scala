@@ -16,6 +16,9 @@
 
 package kamon.cassandra
 
+import java.nio.ByteBuffer
+import java.util
+
 import com.datastax.driver.core.{BoundStatement, RegularStatement, Statement}
 import kamon.Kamon
 import kamon.context.Context
@@ -25,7 +28,8 @@ package object client {
   def attachSpanToStatement(clientSpan: Span, statement: Statement):Statement = {
     statement.enableTracing()
     if(statement.getOutgoingPayload != null) {
-      val payload = statement.getOutgoingPayload
+      val payload = new util.LinkedHashMap[String, ByteBuffer]()
+      payload.putAll(statement.getOutgoingPayload)
       payload.put("kamon-client-span", Kamon.contextCodec().Binary.encode(Context.create(Span.ContextKey, clientSpan)))
       statement.setOutgoingPayload(payload)
     }
