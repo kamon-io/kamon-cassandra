@@ -16,45 +16,49 @@
 
 package kamon.cassandra
 
+import java.util.concurrent.TimeUnit
+
+import com.datastax.driver.core.Session
 import kamon.Kamon
-import kamon.metric.MeasurementUnit.time
-import kamon.metric.{Counter, Histogram, RangeSampler}
+import kamon.metric.{Counter, Histogram, MeasurementUnit, RangeSampler}
 
 object Metrics {
 
-  object Statements {
-    val InFlight = Kamon.rangeSampler("jdbc.statements.in-flight")
+  def inflight(host: String): RangeSampler =
+    Kamon.rangeSampler("cassandra.client-inflight").refine("target", host)
+
+  def inflightDriver(host: String): Histogram =
+    Kamon.histogram("cassandra.client-inflight-driver").refine("target", host)
+
+  def queryDuration: Histogram =
+    Kamon.histogram("cassandra.query-duration", MeasurementUnit.time.nanoseconds)
+
+  def queryCount: Counter =
+    Kamon.counter("cassandra.query-count")
+
+  def connections(host: String): Histogram =
+    Kamon.histogram("cassandra.connection-pool-size").refine("target", host)
+
+  def recordQueryDuration(start: Long, end: Long): Unit = {
+    queryDuration.record(end - start)
+    queryCount.increment(1)
+    inflight("ALL").decrement()
   }
 
-  case class ConnectionPoolMetrics(
-    tags: Map[String, String],
-    openConnections: RangeSampler,
-    borrowedConnections: RangeSampler,
-    borrowTime: Histogram,
-    borrowTimeouts: Counter
-  ) {
+  def from(session: Session): Unit = {
+    import scala.collection.JavaConverters._
 
-    def cleanup(): Unit = {
-      ConnectionPoolMetrics.OpenConnections.remove(tags)
-      ConnectionPoolMetrics.BorrowedConnections.remove(tags)
-      ConnectionPoolMetrics.BorrowTime.remove(tags)
-      ConnectionPoolMetrics.BorrowTimeouts.remove(tags)
-    }
-  }
+    Kamon.scheduler().scheduleAtFixedRate(() => {
+      val state = session.getState
 
-  object ConnectionPoolMetrics {
-    val OpenConnections     = Kamon.rangeSampler("jdbc.pool.open-connections")
-    val BorrowedConnections = Kamon.rangeSampler("jdbc.pool.borrowed-connections")
-    val BorrowTime          = Kamon.histogram("jdbc.pool.borrow-time", time.nanoseconds)
-    val BorrowTimeouts      = Kamon.counter("jdbc.pool.borrow-timeouts")
+      state.getConnectedHosts.asScala.foreach { host =>
+        val hostId = host.getAddress.getHostAddress
+        val openConnections = state.getOpenConnections(host)
+        val inflightCount = state.getInFlightQueries(host)
 
-    def apply(tags: Map[String, String]): ConnectionPoolMetrics =
-      ConnectionPoolMetrics(
-        tags,
-        OpenConnections.refine(tags),
-        BorrowedConnections.refine(tags),
-        BorrowTime.refine(tags),
-        BorrowTimeouts.refine(tags)
-      )
+        inflightDriver(hostId).record(inflightCount)
+        connections(hostId).record(openConnections)
+      }
+    }, 0L, 10, TimeUnit.MILLISECONDS)
   }
 }

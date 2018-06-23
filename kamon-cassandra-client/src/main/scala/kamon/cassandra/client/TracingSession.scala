@@ -22,11 +22,14 @@ import com.datastax.driver.core._
 import com.google.common.base.Function
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import kamon.Kamon
+import kamon.cassandra.Metrics
 import kamon.trace.{Span, SpanCustomizer}
 
 import scala.util.{Failure, Success, Try}
 
 class TracingSession(underlying: Session) extends AbstractSession {
+
+  Metrics.from(underlying)
 
   override def getLoggedKeyspace: String =
     underlying.getLoggedKeyspace
@@ -53,6 +56,7 @@ class TracingSession(underlying: Session) extends AbstractSession {
 
 
   override def executeAsync(statement: Statement): ResultSetFuture = {
+    val start = System.nanoTime()
     val currentContext = Kamon.currentContext()
     val parentSpan = currentContext.get(Span.ContextKey)
 
@@ -67,25 +71,30 @@ class TracingSession(underlying: Session) extends AbstractSession {
       .customize(clientSpanBuilder)
       .start()
 
-      val statementWithSpan = attachSpanToStatement(clientSpan, statement)
+    val statementWithSpan = attachSpanToStatement(clientSpan, statement)
 
-      val future = Try(underlying.executeAsync(statementWithSpan)) match {
-        case Success(resultSetFuture) => resultSetFuture
-        case Failure(cause) =>
-          clientSpan.addError(cause.getMessage, cause)
-          clientSpan.finish()
-          throw cause
+    val future = Try(underlying.executeAsync(statementWithSpan)) match {
+      case Success(resultSetFuture) => resultSetFuture
+      case Failure(cause) =>
+        clientSpan.addError(cause.getMessage, cause)
+        clientSpan.finish()
+        throw cause
+    }
+
+    Metrics.inflight("ALL")
+
+    Futures.addCallback(future ,new FutureCallback[ResultSet] {
+      override def onSuccess(result: ResultSet): Unit = {
+        Metrics.recordQueryDuration(start, System.nanoTime())
+        clientSpan.finish()
       }
 
-      Futures.addCallback(future ,new FutureCallback[ResultSet] {
-        override def onSuccess(result: ResultSet): Unit =
-          clientSpan.finish()
-
-        override def onFailure(cause: Throwable): Unit = {
-          clientSpan.addError(cause.getMessage, cause)
-          clientSpan.finish()
-        }
-      })
+      override def onFailure(cause: Throwable): Unit = {
+        Metrics.recordQueryDuration(start, System.nanoTime())
+        clientSpan.addError(cause.getMessage, cause)
+        clientSpan.finish()
+      }
+    })
     future
   }
 
