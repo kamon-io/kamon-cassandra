@@ -56,8 +56,12 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
     "generate Spans when tracing is enabled and contains payload" in {
       val encodedSpan = Context.create(Span.ContextKey, Kamon.buildSpan("client-span").start())
       val payload = new util.LinkedHashMap[String, ByteBuffer]()
-      payload.put("kamon-client-span", Kamon.contextCodec().Binary.encode(encodedSpan))
-      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
+//      payload.put("kamon-client-span", Kamon.contextCodec().Binary.encode(encodedSpan))
+
+      Kamon.withContext(encodedSpan) {
+//        session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
+        session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
+      }
 
       eventually(timeout(3 seconds)) {
         val span = reporter.nextSpan().value

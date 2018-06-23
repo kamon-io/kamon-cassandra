@@ -22,6 +22,7 @@ import com.datastax.driver.core._
 import com.google.common.base.Function
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import kamon.Kamon
+import kamon.trace.{Span, SpanCustomizer}
 
 import scala.util.{Failure, Success, Try}
 
@@ -52,11 +53,18 @@ class TracingSession(underlying: Session) extends AbstractSession {
 
 
   override def executeAsync(statement: Statement): ResultSetFuture = {
-    val clientSpan = Kamon.buildSpan(getQuery(statement))
+    val currentContext = Kamon.currentContext()
+    val parentSpan = currentContext.get(Span.ContextKey)
+
+    val clientSpanBuilder = Kamon.buildSpan(getQuery(statement))
+      .asChildOf(parentSpan)
       .withMetricTag("span.kind", "client")
       .withTag("http.url", underlying.getCluster.getClusterName)
       .withTag("cassandra.query", getQuery(statement))
       .withTag("cassandra.keyspace", statement.getKeyspace)
+
+    val clientSpan = currentContext.get(SpanCustomizer.ContextKey)
+      .customize(clientSpanBuilder)
       .start()
 
       val statementWithSpan = attachSpanToStatement(clientSpan, statement)

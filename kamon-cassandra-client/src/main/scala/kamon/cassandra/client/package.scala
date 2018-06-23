@@ -26,10 +26,9 @@ import kamon.trace.Span
 
 package object client {
   def attachSpanToStatement(clientSpan: Span, statement: Statement):Statement = {
-    statement.enableTracing()
-    if(statement.getOutgoingPayload != null) {
+    if(statement.isTracing) {
       val payload = new util.LinkedHashMap[String, ByteBuffer]()
-      payload.putAll(statement.getOutgoingPayload)
+      if(statement.getOutgoingPayload != null) payload.putAll(statement.getOutgoingPayload)
       payload.put("kamon-client-span", Kamon.contextCodec().Binary.encode(Context.create(Span.ContextKey, clientSpan)))
       statement.setOutgoingPayload(payload)
     }
