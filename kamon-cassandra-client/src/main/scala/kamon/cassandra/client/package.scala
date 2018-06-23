@@ -25,6 +25,7 @@ import kamon.context.Context
 import kamon.trace.Span
 
 package object client {
+
   def attachSpanToStatement(clientSpan: Span, statement: Statement):Statement = {
     if(statement.isTracing) {
       val payload = new util.LinkedHashMap[String, ByteBuffer]()

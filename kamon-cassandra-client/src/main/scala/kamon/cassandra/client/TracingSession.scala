@@ -54,7 +54,6 @@ class TracingSession(underlying: Session) extends AbstractSession {
   override def prepareAsync(query: String): ListenableFuture[PreparedStatement] =
     underlying.prepareAsync(query)
 
-
   override def executeAsync(statement: Statement): ResultSetFuture = {
     val start = System.nanoTime()
     val currentContext = Kamon.currentContext()
