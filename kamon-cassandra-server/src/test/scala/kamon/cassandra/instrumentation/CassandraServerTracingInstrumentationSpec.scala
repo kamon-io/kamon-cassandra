@@ -38,7 +38,7 @@ class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers w
 
   "the CassandraServerTracingInstrumentation" should {
     "does not generate Spans when tracing is disabled" in {
-      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").bind())
+      session.execute(session.prepare("SELECT * FROM kamon_cassandra.users where name = 'kamon' ALLOW FILTERING").bind())
 
       eventually(timeout(3 seconds)) {
         reporter.nextSpan() shouldBe None
@@ -46,7 +46,7 @@ class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers w
     }
 
     "generate Spans when tracing is enabled" in {
-      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().bind())
+      session.execute(session.prepare("SELECT * FROM kamon_cassandra.users where name = 'kamon' ALLOW FILTERING").enableTracing().bind())
 
       eventually(timeout(3 seconds)) {
         val span = reporter.nextSpan().value
@@ -60,13 +60,13 @@ class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers w
       val payload = new util.LinkedHashMap[String, ByteBuffer]()
       payload.put("kamon-client-span", Kamon.contextCodec().Binary.encode(encodedSpan))
 
-      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
+      session.execute(session.prepare("SELECT * FROM kamon_cassandra.users where name = 'kamon' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
 
       eventually(timeout(3 seconds)) {
         val span = reporter.nextSpan().value
         span.operationName shouldBe "QUERY"
         span.tags("span.kind") shouldBe TagValue.String("server")
-        span.tags("cassandra.query") shouldBe TagValue.String("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING")
+        span.tags("cassandra.query") shouldBe TagValue.String("SELECT * FROM kamon_cassandra.users where name = 'kamon' ALLOW FILTERING")
       }
     }
   }
@@ -82,11 +82,10 @@ class CassandraServerTracingInstrumentationSpec extends WordSpec with Matchers w
     registration = Kamon.addReporter(reporter)
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    session.execute("DROP KEYSPACE IF EXISTS sync_test")
-    session.execute("CREATE KEYSPACE sync_test WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':3}")
-    session.execute("CREATE TABLE   sync_test.users ( id UUID PRIMARY KEY, name text )")
-    session.execute("INSERT INTO sync_test.users (id, name) values (uuid(), 'alice')")
-
+    session.execute("DROP KEYSPACE IF EXISTS kamon_cassandra")
+    session.execute("CREATE KEYSPACE kamon_cassandra WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':3}")
+    session.execute("CREATE TABLE   kamon_cassandra.users ( id UUID PRIMARY KEY, name text )")
+    session.execute("INSERT INTO kamon_cassandra.users (id, name) values (uuid(), 'kamon')")
   }
 
   override protected def afterAll(): Unit = {
