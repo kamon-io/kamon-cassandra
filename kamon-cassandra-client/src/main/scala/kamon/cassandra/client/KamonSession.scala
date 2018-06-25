@@ -59,7 +59,7 @@ class KamonSession(underlying: Session) extends AbstractSession {
     val currentContext = Kamon.currentContext()
     val parentSpan = currentContext.get(Span.ContextKey)
 
-    val clientSpanBuilder = Kamon.buildSpan(getQuery(statement))
+    val clientSpanBuilder = Kamon.buildSpan(getSpanName(statement))
       .asChildOf(parentSpan)
       .withMetricTag("span.kind", "client")
       .withTag("http.url", underlying.getCluster.getClusterName)

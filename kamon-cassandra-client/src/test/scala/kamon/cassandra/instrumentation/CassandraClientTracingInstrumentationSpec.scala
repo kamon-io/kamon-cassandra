@@ -15,16 +15,12 @@
 
 package kamon.cassandra.instrumentation
 
-import java.nio.ByteBuffer
-import java.nio.charset.Charset
-import java.util
-
 import com.datastax.driver.core.Session
 import kamon.Kamon
 import kamon.context.Context
 import kamon.testkit.{MetricInspection, Reconfigure, TestSpanReporter}
-import kamon.trace.Span
 import kamon.trace.Span.TagValue
+import kamon.trace.{Span, SpanCustomizer}
 import kamon.util.Registration
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.scalatest.concurrent.Eventually
@@ -36,7 +32,7 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
 
   "the CassandraClientTracingInstrumentation" should {
     "does not generate Spans when tracing is disabled" in {
-      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").bind())
+      session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
 
       eventually(timeout(3 seconds)) {
         reporter.nextSpan() shouldBe None
@@ -44,37 +40,31 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
     }
 
     "generate Spans when tracing is enabled" in {
-      session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().bind())
-
-      eventually(timeout(3 seconds)) {
-        val span = reporter.nextSpan().value
-//        span.operationName shouldBe "QUERY"
-        span.tags("span.kind") shouldBe TagValue.String("client")
-      }
-    }
-
-    "generate Spans when tracing is enabled and contains payload" in {
       val encodedSpan = Context.create(Span.ContextKey, Kamon.buildSpan("client-span").start())
-      val payload = new util.LinkedHashMap[String, ByteBuffer]()
-//      payload.put("kamon-client-span", Kamon.contextCodec().Binary.encode(encodedSpan))
-
       Kamon.withContext(encodedSpan) {
-//        session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
-        session.execute(session.prepare("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING").enableTracing().setOutgoingPayload(payload).bind())
+        session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").enableTracing().bind())
       }
 
       eventually(timeout(3 seconds)) {
         val span = reporter.nextSpan().value
-//        span.operationName shouldBe "QUERY"
+        span.operationName shouldBe "bound-statement"
         span.tags("span.kind") shouldBe TagValue.String("client")
-//        span.tags("cassandra.query") shouldBe TagValue.String("SELECT * FROM sync_test.users where name = 'alice' ALLOW FILTERING")
+        span.tags("cassandra.query") shouldBe TagValue.String("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING")
       }
     }
-  }
 
+   "pickup a SpanCustomizer from the current context and apply it to the new spans" in {
+     Kamon.withContext(Context(SpanCustomizer.ContextKey, SpanCustomizer.forOperationName("client-span"))) {
+        session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").enableTracing().bind())
+     }
 
-  private def encodeToByteBuffer(value:String):ByteBuffer = {
-    Charset.forName("UTF-8").encode("463ac35c9f6413ad")
+     eventually(timeout(3 seconds)) {
+       val span = reporter.nextSpan().value
+       span.operationName shouldBe "client-span"
+       span.tags("span.kind") shouldBe TagValue.String("client")
+       span.tags("cassandra.query") shouldBe TagValue.String("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING")
+     }
+   }
   }
 
   var registration: Registration = _
@@ -82,18 +72,16 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
   val reporter = new TestSpanReporter()
 
   override protected def beforeAll(): Unit = {
-//    System.setProperty("cassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing", classOf[KamonTracing].getName)
-
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
     enableFastSpanFlushing()
     sampleAlways()
     registration = Kamon.addReporter(reporter)
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    session.execute("DROP KEYSPACE IF EXISTS sync_test")
-    session.execute("CREATE KEYSPACE sync_test WITH REPLICATION = {'class':'SimpleStrategy', 'replication_factor':3}")
-    session.execute("CREATE TABLE   sync_test.users ( id UUID PRIMARY KEY, name text )")
-    session.execute("INSERT INTO sync_test.users (id, name) values (uuid(), 'alice')")
+    session.execute("drop keyspace if exists kamon_cassandra_test")
+    session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
+    session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
+    session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
 
   }
 

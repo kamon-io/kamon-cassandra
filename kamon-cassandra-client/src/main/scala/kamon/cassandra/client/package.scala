@@ -20,6 +20,7 @@ import java.nio.ByteBuffer
 import java.util
 
 import com.datastax.driver.core.{BoundStatement, RegularStatement, Statement}
+import com.google.common.base.CaseFormat
 import kamon.Kamon
 import kamon.context.Context
 import kamon.trace.Span
@@ -40,4 +41,7 @@ package object client {
     case b:BoundStatement => b.preparedStatement.getQueryString
     case r:RegularStatement => r.getQueryString
   }
+
+  def getSpanName(statement: Statement): String =
+    CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_HYPHEN, statement.getClass.getSimpleName)
 }
