@@ -1,5 +1,5 @@
 /* =========================================================================================
- * Copyright © 2013-2017 the kamon project <http://kamon.io/>
+ * Copyright © 2013-2018 the kamon project <http://kamon.io/>
  *
  * Licensed under the Apache License, Version 2.0 (the "License") you may not use this file
  * except in compliance with the License. You may obtain a copy of the License at
@@ -15,34 +15,17 @@
 
 package kamon.cassandra
 
-import java.util.concurrent.TimeUnit
-
 import com.typesafe.config.Config
 import kamon.{Kamon, OnReconfigureHook}
-import kamon.util.DynamicAccess
-import org.slf4j.LoggerFactory
 
 object Cassandra {
-  private val logger = LoggerFactory.getLogger(Cassandra.getClass)
-//  @volatile private var slowQueryThresholdMicroseconds: Long = 2000000
-//  @volatile private var slowQueryProcessor: SlowQueryProcessor = new SlowQueryProcessor.Default
-//  @volatile private var sqlErrorProcessor: SqlErrorProcessor = new SqlErrorProcessor.Default
-
-  loadConfiguration(Kamon.config())
+  @volatile var samplingIntervalMillis: Long = samplingIntervalFromConfig(Kamon.config())
 
   Kamon.onReconfigure(new OnReconfigureHook {
     override def onReconfigure(newConfig: Config): Unit =
-      Cassandra.loadConfiguration(newConfig)
+      samplingIntervalMillis = samplingIntervalFromConfig(newConfig)
   })
 
-
-  private def loadConfiguration(config: Config): Unit = {
-    try {
-      val jdbcConfig = config.getConfig("kamon.cassandra")
-      val dynamic = new DynamicAccess(getClass.getClassLoader)
-
-    } catch {
-      case t: Throwable => logger.error("The kamon-cassandra module failed to load configuration", t)
-    }
-  }
+  def samplingIntervalFromConfig(config: Config): Long =
+    config.getDuration("kamon.cassandra.sample-interval").toMillis
 }

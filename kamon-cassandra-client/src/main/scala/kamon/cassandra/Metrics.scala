@@ -18,9 +18,10 @@ package kamon.cassandra
 
 import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.Session
+import com.datastax.driver.core.{ExecutorQueueMetricsExtractor, Session}
 import kamon.Kamon
-import kamon.metric.{Counter, Histogram, MeasurementUnit, RangeSampler}
+import kamon.cassandra.Cassandra.samplingIntervalMillis
+import kamon.metric._
 
 object Metrics {
 
@@ -51,10 +52,10 @@ object Metrics {
   def from(session: Session): Unit = {
     import scala.collection.JavaConverters._
 
-    val samplingInterval = Kamon.config().getDuration("kamon.cassandra.sample-interval")
-
     Kamon.scheduler().scheduleAtFixedRate(() => {
       val state = session.getState
+
+      ExecutorQueueMetricsExtractor.from(session, ExecutorQueueMetrics())
 
       state.getConnectedHosts.asScala.foreach { host =>
         val hostId = host.getAddress.getHostAddress
@@ -67,6 +68,24 @@ object Metrics {
         inflightDriver(hostId).record(inflightCount)
         connections(hostId).record(openConnections)
       }
-    }, samplingInterval.toMillis, samplingInterval.toMillis, TimeUnit.MILLISECONDS)
+    }, samplingIntervalMillis, samplingIntervalMillis, TimeUnit.MILLISECONDS)
   }
+
+
+  case class ExecutorQueueMetrics(executorQueueDepth: Gauge,
+                                  blockingQueueDepth: Gauge,
+                                  reconnectionTaskCount: Gauge,
+                                  taskSchedulerTaskCount: Gauge)
+
+  object ExecutorQueueMetrics {
+    def apply(): ExecutorQueueMetrics = {
+      val generalTags = Map("component" -> "cassandra-client")
+      new ExecutorQueueMetrics(
+        Kamon.gauge("executor-queue-depth").refine(generalTags),
+        Kamon.gauge("blocking-executor-queue-depth").refine(generalTags),
+        Kamon.gauge("reconnection-scheduler-task-count").refine(generalTags),
+        Kamon.gauge("task-scheduler-task-count").refine(generalTags))
+    }
+  }
+
 }
