@@ -17,12 +17,12 @@
 package kamon.cassandra.client.instrumentation.advisor;
 
 import com.datastax.driver.core.Session;
-import kamon.cassandra.client.TracingSession;
+import kamon.cassandra.client.KamonSession;
 import kanela.agent.libs.net.bytebuddy.asm.Advice;
 
 public class NewSessionMethodAdvisor {
     @Advice.OnMethodExit(suppress = Throwable.class)
     public static void wrapTracingSession(@Advice.Return(readOnly = false) Session session) {
-        session = new TracingSession(session);
+        session = new KamonSession(session);
     }
 }

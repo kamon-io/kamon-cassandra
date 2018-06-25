@@ -27,7 +27,7 @@ import kamon.trace.{Span, SpanCustomizer}
 
 import scala.util.{Failure, Success, Try}
 
-class TracingSession(underlying: Session) extends AbstractSession {
+class KamonSession(underlying: Session) extends AbstractSession {
 
   Metrics.from(underlying)
 
@@ -35,13 +35,13 @@ class TracingSession(underlying: Session) extends AbstractSession {
     underlying.getLoggedKeyspace
 
   override def init(): Session =
-    new TracingSession(underlying.init())
+    new KamonSession(underlying.init())
 
 
   override def initAsync(): ListenableFuture[Session] = {
     Futures.transform(underlying.initAsync(), new Function[Session, Session] {
       override def apply(session: Session): Session =
-        new TracingSession(session)
+        new KamonSession(session)
     })
   }
 
@@ -82,7 +82,7 @@ class TracingSession(underlying: Session) extends AbstractSession {
 
     Metrics.inflight("ALL")
 
-    Futures.addCallback(future ,new FutureCallback[ResultSet] {
+    Futures.addCallback(future, new FutureCallback[ResultSet] {
       override def onSuccess(result: ResultSet): Unit = {
         Metrics.recordQueryDuration(start, System.nanoTime())
         clientSpan.finish()

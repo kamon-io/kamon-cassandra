@@ -39,6 +39,9 @@ object Metrics {
   def connections(host: String): Histogram =
     Kamon.histogram("cassandra.connection-pool-size").refine("target", host)
 
+  def trashedConnections(host: String): Histogram =
+    Kamon.histogram("cassandra.trashed-connections").refine("target", host)
+
   def recordQueryDuration(start: Long, end: Long): Unit = {
     queryDuration.record(end - start)
     queryCount.increment(1)
@@ -48,17 +51,22 @@ object Metrics {
   def from(session: Session): Unit = {
     import scala.collection.JavaConverters._
 
+    val samplingInterval = Kamon.config().getDuration("kamon.cassandra.sample-interval")
+
     Kamon.scheduler().scheduleAtFixedRate(() => {
       val state = session.getState
 
       state.getConnectedHosts.asScala.foreach { host =>
         val hostId = host.getAddress.getHostAddress
+        val trashed = state.getTrashedConnections(host)
         val openConnections = state.getOpenConnections(host)
         val inflightCount = state.getInFlightQueries(host)
 
+        session.getCluster.getMetrics.getRegistry.getCounters()
+        trashedConnections(hostId).record(trashed)
         inflightDriver(hostId).record(inflightCount)
         connections(hostId).record(openConnections)
       }
-    }, 0L, 10, TimeUnit.MILLISECONDS)
+    }, samplingInterval.toMillis, samplingInterval.toMillis, TimeUnit.MILLISECONDS)
   }
 }
