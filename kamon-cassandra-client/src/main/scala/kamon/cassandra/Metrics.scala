@@ -71,7 +71,6 @@ object Metrics {
     }, samplingIntervalMillis, samplingIntervalMillis, TimeUnit.MILLISECONDS)
   }
 
-
   case class ExecutorQueueMetrics(executorQueueDepth: Gauge,
                                   blockingQueueDepth: Gauge,
                                   reconnectionTaskCount: Gauge,
