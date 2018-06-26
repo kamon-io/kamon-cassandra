@@ -52,10 +52,12 @@ object Metrics {
   def from(session: Session): Unit = {
     import scala.collection.JavaConverters._
 
+    val metrics = ExecutorQueueMetrics()
+
     Kamon.scheduler().scheduleAtFixedRate(() => {
       val state = session.getState
 
-      ExecutorQueueMetricsExtractor.from(session, ExecutorQueueMetrics())
+      ExecutorQueueMetricsExtractor.from(session, metrics)
 
       state.getConnectedHosts.asScala.foreach { host =>
         val hostId = host.getAddress.getHostAddress
@@ -86,5 +88,4 @@ object Metrics {
         Kamon.gauge("task-scheduler-task-count").refine(generalTags))
     }
   }
-
 }
