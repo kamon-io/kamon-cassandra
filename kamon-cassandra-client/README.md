@@ -5,11 +5,13 @@ Cassandra Integration   ![Build Status](https://travis-ci.org/kamon-io/kamon-cas
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.kamon/kamon-cassandra_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.kamon/kamon-cassandra_2.12)
 
 
+The `kamon-cassandra` module brings bytecode instrumentation to trace jdbc-compatible database requests
+
 The <b>kamon-cassandra</b> module requires you to start your application using the Kanela Agent. Kamon will warn you
 at startup if you failed to do so.
 
-The bytecode instrumentation provided by the `kamon-cassandra-client` module hooks into the Cassandra Driver to automatically
-gather Metrics and start and finish Spans for requests that are issued within a trace. This translates into you having metrics about how
+The bytecode instrumentation provided by the `kamon-cassandra` module hooks into the Cassandra Driver to automatically
+start and finish Spans for requests that are issued within a trace. This translates into you having metrics about how
 the requests you are doing are behaving.
 
 ### Getting Started
