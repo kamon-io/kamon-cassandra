@@ -14,8 +14,8 @@
  */
 
 
-val kamonCore           = "io.kamon"            %% "kamon-core"               % "1.1.2"
-val kamonTestkit        = "io.kamon"            %% "kamon-testkit"            % "1.1.2"
+val kamonCore           = "io.kamon"            %% "kamon-core"               % "1.1.3"
+val kamonTestkit        = "io.kamon"            %% "kamon-testkit"            % "1.1.3"
 val scalaExtension      = "io.kamon"            %% "kanela-scala-extension"   % "0.0.10"
 
 val cassandraDriver     = "com.datastax.cassandra"    % "cassandra-driver-core"	    % "3.5.0"
@@ -31,6 +31,7 @@ lazy val root = (project in file("."))
 
 lazy val cassandraClient = (project in file("kamon-cassandra-client"))
   .enablePlugins(JavaAgent)
+  .settings(bintrayPackage := "kamon-cassandra")
   .settings(name := "kamon-cassandra-client")
   .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.12"  % "compile;test")
   .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
@@ -43,6 +44,7 @@ lazy val cassandraClient = (project in file("kamon-cassandra-client"))
 
 lazy val cassandraServer = (project in file("kamon-cassandra-server"))
   .enablePlugins(AssemblyPlugin)
+  .settings(bintrayPackage := "kamon-cassandra")
   .settings(name := "kamon-cassandra-server")
   .settings(skip in publish := true)
   .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
