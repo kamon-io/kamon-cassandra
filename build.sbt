@@ -25,6 +25,11 @@ val lombok              = "org.projectlombok"         % "lombok"                
 
 
 lazy val root = (project in file("."))
+  .settings(noPublishing: _*)
+  .aggregate(cassandraClient, cassandraServerPublishing)
+
+
+lazy val cassandraClient = (project in file("kamon-cassandra-client"))
   .enablePlugins(JavaAgent)
   .settings(name := "kamon-cassandra-client")
   .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.12"  % "compile;test")
@@ -33,5 +38,55 @@ lazy val root = (project in file("."))
   .settings(
       libraryDependencies ++=
         compileScope(kamonCore, cassandraDriver, scalaExtension) ++
-        providedScope(lombok, cassandraAll) ++
+        providedScope(lombok) ++
         testScope(cassandraUnit, kamonTestkit, scalatest, slf4jApi, logbackClassic))
+
+lazy val cassandraServer = (project in file("kamon-cassandra-server"))
+  .enablePlugins(AssemblyPlugin)
+  .settings(name := "kamon-cassandra-server")
+  .settings(skip in publish := true)
+  .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
+  .settings(resolvers += Resolver.mavenLocal)
+  .settings(fork in Test := true)
+  .settings(javaOptions in Test := Seq("-Dcassandra.custom_tracing_class=kamon.cassandra.server.KamonTracing"))
+  .settings( assemblyMergeStrategy in assembly := {
+    case PathList("META-INF", xs @ _*)  => MergeStrategy.discard
+    case PathList("library.properties", xs @ _*)  => MergeStrategy.discard
+    case PathList("rootdoc.txt", xs @ _*)  => MergeStrategy.discard
+    case _                              => MergeStrategy.first
+  })
+  .settings(assemblyOption in assembly := (assemblyOption in assembly).value.copy(
+    includeScala = true,
+    includeDependency = true,
+    includeBin = true
+  ))
+  .settings(assemblyShadeRules in assembly := Seq(
+    ShadeRule.rename("org.HdrHistogram.**"-> "shaded.@0").inAll,
+    ShadeRule.rename("ch.qos.logback.**"-> "shaded.@0").inAll,
+    ShadeRule.rename("io.netty.**"-> "shaded.@0").inAll,
+    ShadeRule.rename("com.typesafe.**"-> "shaded.@0").inAll,
+    ShadeRule.rename("scala.**"-> "shaded.@0").inAll,
+    ShadeRule.rename("org.objectweb**"-> "shaded.@0").inAll,
+    ShadeRule.rename("org.slf4j**"-> "shaded.@0").inAll,
+    ShadeRule.rename("com.codahale**"-> "shaded.@0").inAll,
+    ShadeRule.rename("com.datastax**"-> "shaded.@0").inAll,
+    ShadeRule.rename("com.google**"-> "shaded.@0").inAll,
+    ShadeRule.rename("com.kenai**"-> "shaded.@0").inAll,
+    ShadeRule.zap("sourcecode.**").inAll,
+    ShadeRule.zap("kanela.**").inAll,
+    ShadeRule.zap("fansi.**").inAll,
+    ShadeRule.zap("io.vavr.**").inAll
+  ))
+  .settings(
+        libraryDependencies ++=
+          compileScope(kamonCore, cassandraDriver, scalaExtension) ++
+            providedScope(lombok, cassandraAll) ++
+            testScope(cassandraUnit, kamonTestkit, scalatest, slf4jApi, logbackClassic))
+
+
+lazy val cassandraServerPublishing = project
+  .settings(
+    name := "kamon-cassandra-server",
+    packageBin in Compile := (assembly in (cassandraServer, Compile)).value,
+    packageSrc in Compile := (packageSrc in (cassandraServer, Compile)).value
+  )
