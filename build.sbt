@@ -26,8 +26,8 @@ val lombok              = "org.projectlombok"         % "lombok"                
 
 lazy val root = (project in file("."))
   .enablePlugins(JavaAgent)
-  .settings(name := "kamon-cassandra")
-  .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.300"  % "compile;test")
+  .settings(name := "kamon-cassandra-client")
+  .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.12"  % "compile;test")
   .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
   .settings(resolvers += Resolver.mavenLocal)
   .settings(
