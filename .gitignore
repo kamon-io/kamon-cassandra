@@ -52,6 +52,6 @@ test-result
 server.pid
 *.iml
 *.eml
-
+cassandraServerPublishing
 # Default sigar library provision location.
 native/
