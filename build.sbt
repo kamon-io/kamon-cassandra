@@ -16,9 +16,9 @@
 
 val kamonCore           = "io.kamon"            %% "kamon-core"               % "1.1.3"
 val kamonTestkit        = "io.kamon"            %% "kamon-testkit"            % "1.1.3"
-val scalaExtension      = "io.kamon"            %% "kanela-scala-extension"   % "0.0.10"
+val scalaExtension      = "io.kamon"            %% "kanela-scala-extension"   % "0.0.14"
 
-val cassandraDriver     = "com.datastax.cassandra"    % "cassandra-driver-core"	    % "3.5.0"
+val cassandraDriver     = "com.datastax.cassandra"    % "cassandra-driver-core"	    % "3.6.0"
 val cassandraAll        = "org.apache.cassandra"      % "cassandra-all"        	    % "3.11.2"
 val cassandraUnit	      = "org.cassandraunit"         % "cassandra-unit"       	    % "3.5.0.1"
 val lombok              = "org.projectlombok"         % "lombok"                    % "1.18.0"
@@ -33,7 +33,7 @@ lazy val cassandraClient = (project in file("kamon-cassandra-client"))
   .enablePlugins(JavaAgent)
   .settings(bintrayPackage := "kamon-cassandra")
   .settings(name := "kamon-cassandra-client")
-  .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.12"  % "compile;test")
+  .settings(javaAgents += "io.kamon"    % "kanela-agent"   % "0.0.15"  % "compile;test")
   .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
   .settings(resolvers += Resolver.mavenLocal)
   .settings(
