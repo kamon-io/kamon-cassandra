@@ -48,11 +48,8 @@ class KamonSession(underlying: Session) extends AbstractSession {
   override def prepareAsync(query: String, customPayload: util.Map[String, ByteBuffer]): ListenableFuture[PreparedStatement] = {
     val statement = new SimpleStatement(query)
     statement.setOutgoingPayload(customPayload)
-    prepareAsync(statement)
+    underlying.prepareAsync(statement)
   }
-
-  override def prepareAsync(query: String): ListenableFuture[PreparedStatement] =
-    underlying.prepareAsync(query)
 
   override def executeAsync(statement: Statement): ResultSetFuture = {
     val start = System.nanoTime()
