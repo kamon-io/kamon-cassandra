@@ -20,18 +20,22 @@ Supported releases and dependencies are shown below.
 
 | kamon-cassandra  | status | jdk  | scala            
 |:------:|:------:|:----:|------------------
-|  1.0.0 | stable | 1.8+ | 2.11, 2.12  
+|  1.0.6 | stable | 1.8+ | 2.11, 2.12  
 
 To get started with SBT, simply add the following to your `build.sbt`
 file:
 
 ```scala
-libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "1.0.0"
+libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "1.0.6"
 ```
-
 
 ### Metrics ###
 
 The following metrics will be recorded:
 
-* __TODO__
+- cassandra_query_count_total
+- cassandra_client_inflight_driver_bucket
+- cassandra_trashed_connections_bucket
+- cassandra_connection_pool_size_bucket
+- cassandra_query_duration_seconds_bucket
+- cassandra_client_inflight_bucket
