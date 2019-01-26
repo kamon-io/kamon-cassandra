@@ -54,21 +54,24 @@ object Metrics {
 
     val metrics = ExecutorQueueMetrics()
 
-    Kamon.scheduler().scheduleAtFixedRate(() => {
-      val state = session.getState
+    Kamon.scheduler().scheduleAtFixedRate(new Runnable {
+      override def run(): Unit = {
 
-      ExecutorQueueMetricsExtractor.from(session, metrics)
+        val state = session.getState
 
-      state.getConnectedHosts.asScala.foreach { host =>
-        val hostId = host.getAddress.getHostAddress
-        val trashed = state.getTrashedConnections(host)
-        val openConnections = state.getOpenConnections(host)
-        val inflightCount = state.getInFlightQueries(host)
+        ExecutorQueueMetricsExtractor.from(session, metrics)
 
-        session.getCluster.getMetrics.getRegistry.getCounters()
-        trashedConnections(hostId).record(trashed)
-        inflightDriver(hostId).record(inflightCount)
-        connections(hostId).record(openConnections)
+        state.getConnectedHosts.asScala.foreach { host =>
+          val hostId = host.getAddress.getHostAddress
+          val trashed = state.getTrashedConnections(host)
+          val openConnections = state.getOpenConnections(host)
+          val inflightCount = state.getInFlightQueries(host)
+
+          session.getCluster.getMetrics.getRegistry.getCounters()
+          trashedConnections(hostId).record(trashed)
+          inflightDriver(hostId).record(inflightCount)
+          connections(hostId).record(openConnections)
+        }
       }
     }, samplingIntervalMillis, samplingIntervalMillis, TimeUnit.MILLISECONDS)
   }
