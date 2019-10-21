@@ -6,6 +6,8 @@
         </encoder>
     </appender>
 
+    <logger name="org.hyperic" level="OFF"/>
+
     <root level="OFF">
         <appender-ref ref="STDOUT"/>
     </root>
