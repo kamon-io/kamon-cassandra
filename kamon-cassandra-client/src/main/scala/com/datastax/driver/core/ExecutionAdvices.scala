@@ -80,7 +80,7 @@ object OnFetchMore {
 
 object QueryWriteAdvice {
   @Advice.OnMethodEnter
-  def onStartWriting(@Advice.This execution: HasContext): Unit = if(Cassandra.traceExecutions) {
+  def onStartWriting(@Advice.This execution: HasContext): Unit = {
     val executionSpan = execution.context.get(Span.Key)
     executionSpan.mark("writing")
   }

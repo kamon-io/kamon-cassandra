@@ -17,6 +17,7 @@ package kamon.instrumentation.instrumentation
 
 import com.datastax.driver.core.{Cluster, Session}
 import kamon.instrumentation.cassandra.client.ClientMetrics
+import kamon.tag.TagSet
 import kamon.testkit.{InstrumentInspection, MetricInspection}
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.scalatest.concurrent.Eventually
@@ -27,63 +28,44 @@ import scala.util.Try
 
 class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
   with  MetricInspection.Syntax with InstrumentInspection.Syntax  with OptionValues {
+  import ClientMetrics._
 
   "the CassandraClientMetrics" should {
 
-    "track the total of active requests in ALL hosts" in {
+    "track client metrics" in {
       for(_ <- 1 to 100) yield {
         session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
       }
 
+      val statementTags = TagSet.of("statement.kind", "select")
+
       eventually(timeout(3 seconds)) {
-        ClientMetrics.queryInflight("ALL").distribution(false).max shouldBe >= (1L)
+        poolBorrow("127.0.0.1").distribution(false).max shouldBe >= (1L)
+        connections("127.0.0.1").distribution(false).max should be > 0L
+        inflightPerConnection.distribution(false).max should be > 0L
+        inflightDriver("127.0.0.1").distribution(false).max should be > 0L
+        queryDuration.withTags(statementTags).distribution(false).max should be > 0L
+        queryCount.withTags(statementTags).value(false) should be > 0L
+        queryInflight("ALL").distribution().max should be > 0L
+
+        errors("127.0.0.1").value(false) should equal (0)
+        timeouts("127.0.0.1").value(false) should equal (0)
+        retries.value(false) should equal (0)
+        speculative.value(false) should equal (0)
+        cancelled.value(false) should equal (0)
       }
     }
 
-    "track the total of active requests" in {
-      for(_ <- 1 to 100) yield {
-        session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
+    "track the cassandra client executors queue size" in {
+      for(_ <- 1 to 10) yield {
+        session.executeAsync(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
       }
 
-      eventually(timeout(3 seconds)) {
-        ClientMetrics.queryInflight("127.0.0.1").distribution(false).max shouldBe > (0L)
-
+      eventually(timeout(10 seconds)) {
+        ExecutorQueueMetrics().taskSchedulerTaskCount.value() should be > 0.0
       }
     }
-    /*
-        "track the query count" in {
-          for(_ <- 1 to 100) yield {
-            session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
-          }
 
-          eventually(timeout(3 seconds)) {
-            Metrics.queryCount.value() shouldBe >= (100L)
-          }
-        }
-
-        "track the query duration" in {
-          for(_ <- 1 to 100) yield {
-            session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
-          }
-
-          eventually(timeout(3 seconds)) {
-            Metrics.queryDuration.distribution().count shouldBe >= (100L)
-          }
-        }
-
-        "track the cassandra client executors queue size" in {
-          for(_ <- 1 to 100) yield {
-            session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
-          }
-
-          eventually(timeout(3 seconds)) {
-            val metrics = Metrics.ExecutorQueueMetrics()
-            metrics.executorQueueDepth.value() shouldBe >= (0L)
-            metrics.blockingQueueDepth.value() shouldBe >= (0L)
-            metrics.reconnectionTaskCount.value() shouldBe >= (0L)
-            metrics.taskSchedulerTaskCount.value() shouldBe >= (0L)
-          }
-        }*/
   }
 
   var session:Session = _
@@ -100,6 +82,7 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
 
   private def getSession: Try[Session] = Try {
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
+
     session.execute("drop keyspace if exists kamon_cassandra_test")
     session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
     session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")

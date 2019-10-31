@@ -25,6 +25,8 @@ import kamon.instrumentation.cassandra.Cassandra.samplingIntervalMillis
 import kamon.metric._
 import kamon.tag.TagSet
 
+import scala.util.Try
+
 
 object TargetResolver {
   def getTarget(address: InetAddress): String = address.getHostAddress
@@ -99,10 +101,9 @@ object ClientMetrics {
 
     Kamon.scheduler().scheduleAtFixedRate(new Runnable {
       override def run(): Unit = {
-
         val state = session.getState
 
-        ExecutorQueueMetricsExtractor.from(session, metrics)
+        val disi = Try(ExecutorQueueMetricsExtractor.from(session, metrics))
 
         state.getConnectedHosts.asScala.foreach { host =>
           val hostId = TargetResolver.getTarget(host.getAddress)
