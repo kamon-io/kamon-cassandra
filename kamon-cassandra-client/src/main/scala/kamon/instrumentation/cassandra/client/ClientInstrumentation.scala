@@ -25,17 +25,18 @@ import kanela.agent.api.instrumentation.InstrumentationBuilder
 class ClientInstrumentation extends InstrumentationBuilder {
   import kamon.instrumentation._
 
+  onSubTypesOf("com.datastax.driver.core.Message$Response")
+    .mixin(classOf[MixinWithInitializer])
+
+  onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
+    .mixin(classOf[MixinWithInitializer])
+
+
   onType("com.datastax.driver.core.Cluster$Manager")
     .advise(method("newSession"), classOf[NewSessionMethodAdvisor])
 
   onType("com.datastax.driver.core.HostConnectionPool")
     .advise(method("borrowConnection"), ConnectionPoolAdvice)
-
-  onType("com.datastax.driver.core.Responses$Result")
-    .mixin(classOf[MixinWithInitializer])
-
-  onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
-    .mixin(classOf[MixinWithInitializer])
 
   onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
     .advise(method("queryNextPage"), OnFetchMore)
@@ -43,12 +44,14 @@ class ClientInstrumentation extends InstrumentationBuilder {
   onType("com.datastax.driver.core.ArrayBackedResultSet")
     .advise(method("fromMessage"), OnResultSetConstruction)
 
+  //can be split into SpeculativeExecution(query,write) and general Connection.Callback (onXXX methods)
   onType("com.datastax.driver.core.RequestHandler$SpeculativeExecution")
     .mixin(classOf[MixinWithInitializer])
     .advise(method("query"), QueryExecutionAdvice)
     .advise(method("write"), QueryWriteAdvice)
-    .advise(method("onSet"), OnSetAdvice)
     .advise(method("onException"), OnExceptionAdvice)
     .advise(method("onTimeout"), OnTimeoutAdvice)
+    .advise(method("onSet"), OnSetAdvice)
+
 
 }

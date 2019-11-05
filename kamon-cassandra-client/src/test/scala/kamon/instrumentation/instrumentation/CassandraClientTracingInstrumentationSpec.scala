@@ -15,16 +15,20 @@
 
 package kamon.instrumentation.instrumentation
 
+import com.datastax.driver.core
+import com.datastax.driver.core.exceptions.DriverException
 import com.datastax.driver.core.{QueryOperations, Session}
 import com.datastax.driver.core.querybuilder.QueryBuilder
-import kamon.Kamon
 import kamon.module.Module.Registration
 import kamon.testkit.{InstrumentInspection, MetricInspection, Reconfigure, TestSpanReporter}
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.SpanSugar
 import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, WordSpec}
+
+import scala.collection.JavaConverters._
 import kamon.tag.Lookups._
+
 
 
 class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
@@ -39,18 +43,64 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
       }
     }
 
-    //execution, retry, speculation, prepare
-    // dc, target
-    //has a writing mark
-    //timeout
-    //fetch size, hasMore, retrieved
+    "trace execution" in {
+      testSpanReporter().clear()
+      session.execute("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING")
+      eventually(timeout(10 seconds)) {
+        val clientSpan = testSpanReporter().nextSpan()
+        val executionSpan = testSpanReporter().nextSpan()
 
-
-    "trace executions separately from user invocation" in {
-
+        clientSpan should not be empty
+        executionSpan should not be empty
+        clientSpan.get.operationName should equal (QueryOperations.ExecutionPrefix)
+        executionSpan.get.operationName should equal (QueryOperations.ExecutionOperationName)
+        executionSpan.get.parentId should equal (clientSpan.get.id)
+        executionSpan.get.marks.find(_.key == "writing") should not be empty
+      }
     }
 
-    //session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
+    "not swallow exceptions" in {
+      testSpanReporter().clear()
+
+      val query = QueryBuilder
+        .select("name")
+        .from("illegaltablename")
+        .where(QueryBuilder.eq("name", "kamon"))
+        .allowFiltering()
+        .setFetchSize(5)
+
+      assertThrows[DriverException] {
+        session.execute(query)
+      }
+    }
+
+
+
+    "trace individual page executions" in {
+      testSpanReporter().clear()
+
+      val query = QueryBuilder
+        .select("name")
+        .from("users")
+        .where(QueryBuilder.eq("name", "kamon"))
+        .allowFiltering()
+        .setFetchSize(5)
+
+      session.execute(query).iterator().asScala.foreach(_ => ())
+
+      eventually(timeout(10 seconds)) {
+        val spans = testSpanReporter().spans()
+        println(spans.size)
+        val clientSpan = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
+        clientSpan should not be empty
+        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetch-size")) should equal (5L)
+        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetched")) should equal (5L)
+        clientSpan.get.tags.get(plainBoolean("cassandra.client.rs.has-more")) shouldBe true
+
+        val executionSpans = spans.filter(_.operationName == QueryOperations.ExecutionOperationName)
+        executionSpans.size should equal(3)
+      }
+    }
   }
 
   var registration: Registration = _
@@ -60,13 +110,18 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
     enableFastSpanFlushing()
     sampleAlways()
-    session = EmbeddedCassandraServerHelper.getCluster.newSession()
+    val s = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    session.execute("drop keyspace if exists kamon_cassandra_test")
-    session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
-    session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
-    session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
+    s.execute("drop keyspace if exists kamon_cassandra_test")
+    s.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
+    s.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
+    for(i <- 1 to 12) {
+      s.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
+    }
 
+    s.close()
+
+    session = EmbeddedCassandraServerHelper.getCluster.connect("kamon_cassandra_test")
   }
 
   override protected def afterAll(): Unit = {

@@ -9,6 +9,7 @@ import kamon.context.Context
 import kamon.context.Storage.Scope
 import kamon.instrumentation.cassandra.Cassandra
 import kamon.instrumentation.cassandra.client.{ClientMetrics, TargetResolver}
+import kamon.instrumentation.context
 import kamon.instrumentation.context.HasContext
 import kamon.trace.Span
 import kanela.agent.libs.net.bytebuddy.asm.Advice
@@ -93,6 +94,7 @@ object OnSetAdvice {
   @Advice.OnMethodEnter
   def onSetResult(@Advice.This execution: Connection.ResponseCallback with HasContext,
                  @Advice.Argument(1) response: Message.Response): Unit = {
+
     val executionSpan = execution.context.get(Span.Key)
     if(response.isInstanceOf[Responses.Result.Prepared]) executionSpan.name(QueryPrepareOperationName)
     if(execution.retryCount() > 0) {
@@ -100,7 +102,7 @@ object OnSetAdvice {
       ClientMetrics.retries.increment()
     }
     if(response.`type` == Response.Type.ERROR) executionSpan.fail(response.`type`.name())
-    //Need to correlate paging requests with original one, carry context with message
+    //In order to correlate paging requests with initial one, carry context with message
     response.asInstanceOf[HasContext].setContext(execution.context)
     executionSpan.finish()
   }
