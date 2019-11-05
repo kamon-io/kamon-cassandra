@@ -32,96 +32,96 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
 ```
 
 
-##Connection metrics
-####`cassandra.client.pool-borrow-time`
+## Connection metrics
+#### `cassandra.client.pool-borrow-time`
 - Time spent waiting for a connection for an execution
 - Histogram
     - `target` connection target node
 
-####`cassandra.connection.pool.size`
+#### `cassandra.connection.pool.size`
 - Number of active connections per node
 - Histogram
     - `target` -> node
 
-####`cassandra.trashed-connections`
+#### `cassandra.trashed-connections`
 - Number of thrashed connections per host
 - Histogram
     - `target`
 
 
-####`cassandra.client.inflight-per-connection`
+#### `cassandra.client.inflight-per-connection`
 - Distribution of in-flight requests over connections, recorded when connections is borrowed from pool
 - Histogram
 
 
-####`cassandra.client.inflight-per-target`
+#### `cassandra.client.inflight-per-target`
 - Distribution of in-flight requests over cluster nodes
 - Histogram
 
 
 
-##Query metrics
+## Query metrics
 
 
-####`cassandra.client.query.duration`
+#### `cassandra.client.query.duration`
 - Histogram
 - User observed query duration, as measured from the moment query is `executeAsync` is invoked until first page of result set is ready
     - `statement.kind` -> present only for DML statements `select` | `insert` | `update` | `delete`
 
-####`cassandra.client.query.count`  //same data can be extracted from former histogram
+#### `cassandra.client.query.count`  //same data can be extracted from former histogram
 - Counter 
 - Counts total number of executed client queries (not including retries, speculations, fetches..)
     - `statement.kind`
 
-####`cassandra.client.inflight`
+#### `cassandra.client.inflight`
 - Current number of of active queries
 - RangeSampler 
     - `target` -> Not used? should be host, but dont have that info on session, maybe doesnt make sense for query (does for execution?)
 
-####`cassandra.query.errors`
+#### `cassandra.query.errors`
 - Counter 
 - Count total number of failed executions (not neccessarily failed entire query)
     - `target` -> target node for execution
 
-####`cassandra.query.timeouts`
+#### `cassandra.query.timeouts`
 - Counter 
 - Count total number of timed-out executions
     - `target` -> target node for execution
 
-####`cassandra.query.retries`
+#### `cassandra.query.retries`
 - Counter 
 - Count cluster-wide total number of retried exectutions
 
-####`cassandra.query.speculative`
+#### `cassandra.query.speculative`
 - Counter 
 - Count cluster-wide total number of speculative executions (only issued queries, not measuring whether speculative won or got canceled by original response arriving)
 
-####`cassandra.query.cancelled`
+#### `cassandra.query.cancelled`
 - Counter 
 - Count cluster-wide totaln number of cancelled executions (including user hanging up or speculative execution getting cancelked)
 
 
 
 
-##Executor metrics:
+## Executor metrics:
 
-####`cassandra.queue.executor`
+#### `cassandra.queue.executor`
 - Gauge 
 - Number of queued up tasks in the main internal executor.
-####`cassandra.queue.blocking`
+#### `cassandra.queue.blocking`
 - Gauge 
 - Number of queued up tasks in the blocking executor.
-####`cassandra.queue.reconnection`
+#### `cassandra.queue.reconnection`
 - Gauge 
 - Number of queued up tasks in the reconnection executor
-####`cassandra.scheduled-tasks`
+#### `cassandra.scheduled-tasks`
 - Gauge 
 - Number of queued up tasks in the scheduled tasks executor.
 
 
 
 
-##Tracing
+## Tracing
 Client Span is created for every `executeAsync` invocation tagged with
 - `span.kind` - `client`
 - `cassandra.query` Query CQL
