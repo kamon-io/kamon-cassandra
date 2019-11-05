@@ -23,7 +23,6 @@ val kamonInstrument     = "io.kamon"            %% "kamon-instrumentation-common
 val cassandraDriver     = "com.datastax.cassandra"    % "cassandra-driver-core"	    % "3.6.0"
 val cassandraAll        = "org.apache.cassandra"      % "cassandra-all"        	    % "3.11.2"
 val cassandraUnit	      = "org.cassandraunit"         % "cassandra-unit"       	    % "3.5.0.1"
-val lombok              = "org.projectlombok"         % "lombok"                    % "1.18.0"
 
 val logbackCore         = "ch.qos.logback"            % "logback-core"              % "1.2.3"
 
@@ -45,5 +44,5 @@ lazy val cassandraClient = (project in file("kamon-cassandra-client"))
   .settings(
       libraryDependencies ++=
         compileScope(kamonCore, cassandraDriver, kamonInstrument) ++
-        providedScope(lombok, kanelaAgent) ++
+        providedScope(kanelaAgent) ++
         testScope(cassandraUnit, kamonTestkit, scalatest, slf4jApi, logbackClassic, logbackCore, "io.kamon"    %% "kamon-apm-reporter" % "2.0.0"))

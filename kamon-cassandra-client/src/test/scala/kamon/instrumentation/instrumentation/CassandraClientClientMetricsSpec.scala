@@ -72,21 +72,22 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
 
 
   override protected def beforeAll(): Unit = {
-    Try(startCassandra()) //will fail if reruning tests in same JVM, no way of checking if its running already :/
-    getSession.foreach(s => session = s)
+    startCassandra()
   }
 
   private def startCassandra(): Unit = {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
+    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+    session = getSession
   }
 
-  private def getSession: Try[Session] = Try {
+  private def getSession: Session = {
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    session.execute("drop keyspace if exists kamon_cassandra_test")
     session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
     session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
     session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
+    session.execute("USE kamon_cassandra_test")
     session
   }
 

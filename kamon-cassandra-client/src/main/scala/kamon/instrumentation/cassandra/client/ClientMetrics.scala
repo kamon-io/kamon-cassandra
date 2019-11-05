@@ -34,6 +34,7 @@ object TargetResolver {
 
 object ClientMetrics {
 
+  val DmlStatementPrefixes = Set("select", "insert", "update", "delete")
 
   def poolBorrow(host: String): Histogram =
     Kamon.histogram("cassandra.client.pool-borrow-time", MeasurementUnit.time.nanoseconds)
@@ -90,28 +91,24 @@ object ClientMetrics {
   def recordQueryDuration(start: Long, end: Long, statementKind: Option[String]): Unit = {
     val statementTags = TagSet.of("statement.kind", statementKind.getOrElse("other"))
     queryDuration.withTags(statementTags).record(end - start)
-    queryCount.withTags(statementTags).increment(1)
+    queryCount.withTags(statementTags).increment()
     queryInflight("ALL").decrement()
   }
 
   def from(session: Session): Unit = {
     import scala.collection.JavaConverters._
 
-    val metrics = ExecutorQueueMetrics()
-
     Kamon.scheduler().scheduleAtFixedRate(new Runnable {
       override def run(): Unit = {
         val state = session.getState
 
-        val disi = Try(ExecutorQueueMetricsExtractor.from(session, metrics))
+        ExecutorQueueMetricsExtractor.from(session, ExecutorQueueMetrics())
 
         state.getConnectedHosts.asScala.foreach { host =>
           val hostId = TargetResolver.getTarget(host.getAddress)
           val trashed = state.getTrashedConnections(host)
           val openConnections = state.getOpenConnections(host)
           val inflightCount = state.getInFlightQueries(host)
-
-          //session.getCluster.getMetrics.getRegistry.getCounters()
 
           trashedConnections(hostId).record(trashed)
           inflightDriver(hostId).record(inflightCount)

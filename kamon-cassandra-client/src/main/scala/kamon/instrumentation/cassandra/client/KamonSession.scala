@@ -30,8 +30,6 @@ import scala.util.{Failure, Success, Try}
 
 class KamonSession(underlying: Session) extends AbstractSession {
 
-  private val dmlStatementPrefixes = Set("select", "insert", "update", "delete")
-
   ClientMetrics.from(underlying)
 
   override def getLoggedKeyspace: String =
@@ -63,7 +61,7 @@ class KamonSession(underlying: Session) extends AbstractSession {
     */
   def extractStatementType(query: String): Option[String] = {
     Option(query.substring(0, query.indexOf(" ")).toLowerCase)
-      .filter(dmlStatementPrefixes.contains)
+      .filter(ClientMetrics.DmlStatementPrefixes.contains)
   }
 
   override def executeAsync(statement: Statement): ResultSetFuture = {

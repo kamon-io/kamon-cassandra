@@ -15,6 +15,7 @@ object ExecutorQueueMetricsExtractor {
     Option(manager.reconnectionExecutorQueue).foreach { q =>
       executorQueueMetrics.reconnectionTaskCount.update(q.size())
     }
+
     Option(manager.scheduledTasksExecutorQueue).foreach { q =>
       executorQueueMetrics.taskSchedulerTaskCount.update(q.size())
     }

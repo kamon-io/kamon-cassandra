@@ -31,7 +31,6 @@ class ClientInstrumentation extends InstrumentationBuilder {
   onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
     .mixin(classOf[MixinWithInitializer])
 
-
   onType("com.datastax.driver.core.Cluster$Manager")
     .advise(method("newSession"), classOf[NewSessionMethodAdvisor])
 

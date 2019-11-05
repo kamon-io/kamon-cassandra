@@ -90,7 +90,6 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
 
       eventually(timeout(10 seconds)) {
         val spans = testSpanReporter().spans()
-        println(spans.size)
         val clientSpan = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
         clientSpan should not be empty
         clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetch-size")) should equal (5L)
@@ -107,24 +106,23 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
   var session:Session = _
 
   override protected def beforeAll(): Unit = {
-    EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
     enableFastSpanFlushing()
     sampleAlways()
-    val s = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    s.execute("drop keyspace if exists kamon_cassandra_test")
-    s.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
-    s.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
+    EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
+    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+    session = EmbeddedCassandraServerHelper.getCluster.newSession()
+
+    session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
+    session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
     for(i <- 1 to 12) {
-      s.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
+      session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
     }
-
-    s.close()
-
-    session = EmbeddedCassandraServerHelper.getCluster.connect("kamon_cassandra_test")
+    session.execute("USE kamon_cassandra_test")
   }
 
   override protected def afterAll(): Unit = {
-//    registration.cancel()
+    session.close()
+    EmbeddedCassandraServerHelper.getCluster.close()
   }
 }

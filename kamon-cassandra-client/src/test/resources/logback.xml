@@ -7,8 +7,10 @@
     </appender>
 
     <logger name="org.hyperic" level="OFF"/>
+    <logger name="org.cassandraunit" level="OFF"/>
+    <logger name="org.apache" level="OFF"/>
 
-    <root level="OFF">
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>

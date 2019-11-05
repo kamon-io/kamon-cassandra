@@ -73,7 +73,6 @@ object TestApp extends App {
   val c = Kamon.runWithSpan(Kamon.spanBuilder("query").start()) {
     Kamon.currentSpan().tag("span.kind", "server")
     session.execute(q).iterator().asScala.foreach { r =>
-      println(s"Retrieved ${r.getString("txt")}")
       Thread.sleep(10)
     }
   }
