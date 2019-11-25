@@ -14,10 +14,10 @@
  */
 
 
-val kamonCore           = "io.kamon"            %% "kamon-core"               % "2.0.1"
+val kamonCore           = "io.kamon"            %% "kamon-core"               % "2.0.3"
 val kamonTestkit        = "io.kamon"            %% "kamon-testkit"            % "2.0.0-M4"
 
-val kanelaAgent         = "io.kamon"            % "kanela-agent"                    % "1.0.0"
+val kanelaAgent         = "io.kamon"            % "kanela-agent"                    % "1.0.3"
 val kamonInstrument     = "io.kamon"            %% "kamon-instrumentation-common"   % "2.0.0"
 
 val cassandraDriver     = "com.datastax.cassandra"    % "cassandra-driver-core"	    % "3.6.0"
