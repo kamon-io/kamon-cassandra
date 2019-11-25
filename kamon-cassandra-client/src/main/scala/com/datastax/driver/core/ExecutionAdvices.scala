@@ -76,6 +76,11 @@ object OnFetchMore {
     val clientSpan = hasContext.context.get(QueryExecutionAdvice.ParentSpanKey)
     Kamon.storeContext(Context.of(Span.Key, clientSpan))
   }
+
+  @Advice.OnMethodExit
+  def onFetched(@Advice.Enter scope: Scope): Unit = {
+    scope.close()
+  }
 }
 
 object QueryWriteAdvice {

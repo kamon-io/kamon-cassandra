@@ -29,6 +29,8 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, WordSpec}
 import scala.collection.JavaConverters._
 import kamon.tag.Lookups._
 
+import scala.util.Try
+
 
 
 class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
@@ -47,13 +49,13 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
       testSpanReporter().clear()
       session.execute("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING")
       eventually(timeout(10 seconds)) {
-        val clientSpan = testSpanReporter().nextSpan()
-        val executionSpan = testSpanReporter().nextSpan()
+        val spans = testSpanReporter().spans()
+        val clientSpan = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
+        val executionSpan = spans.find(_.operationName == QueryOperations.ExecutionOperationName)
 
         clientSpan should not be empty
         executionSpan should not be empty
-        clientSpan.get.operationName should equal (QueryOperations.ExecutionPrefix)
-        executionSpan.get.operationName should equal (QueryOperations.ExecutionOperationName)
+
         executionSpan.get.parentId should equal (clientSpan.get.id)
         executionSpan.get.marks.find(_.key == "writing") should not be empty
       }
@@ -91,13 +93,15 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
       eventually(timeout(10 seconds)) {
         val spans = testSpanReporter().spans()
         val clientSpan = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
+        val executionSpans = spans.filter(_.operationName == QueryOperations.ExecutionOperationName)
+
         clientSpan should not be empty
+        executionSpans.size should equal(3)
+
         clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetch-size")) should equal (5L)
         clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetched")) should equal (5L)
         clientSpan.get.tags.get(plainBoolean("cassandra.client.rs.has-more")) shouldBe true
 
-        val executionSpans = spans.filter(_.operationName == QueryOperations.ExecutionOperationName)
-        executionSpans.size should equal(3)
       }
     }
   }
@@ -110,7 +114,7 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
     sampleAlways()
 
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
-    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+    Try(EmbeddedCassandraServerHelper.cleanEmbeddedCassandra())
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
     session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
