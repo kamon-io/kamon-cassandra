@@ -17,8 +17,10 @@
 package kamon.instrumentation.cassandra.client
 
 import com.datastax.driver.core._
+import kamon.instrumentation.cassandra.{HasPoolMetrics, HostPoolMetrics, PoolWithMetrics}
 import kamon.instrumentation.cassandra.client.instrumentation.advisor.NewSessionMethodAdvisor
 import kamon.instrumentation.context.HasContext.MixinWithInitializer
+import kamon.metric.Histogram
 import kanela.agent.api.instrumentation.InstrumentationBuilder
 
 
@@ -35,7 +37,10 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(method("newSession"), classOf[NewSessionMethodAdvisor])
 
   onType("com.datastax.driver.core.HostConnectionPool")
-    .advise(method("borrowConnection"), ConnectionPoolAdvice)
+    .mixin(classOf[PoolWithMetrics])
+    .advise(isConstructor, PoolConstructorAdvice)
+    .advise(method("borrowConnection"), BorrowAdvice)
+
 
   onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
     .advise(method("queryNextPage"), OnFetchMore)

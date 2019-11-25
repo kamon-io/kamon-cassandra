@@ -77,7 +77,7 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
 
   private def startCassandra(): Unit = {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
-    EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+    //EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
     session = getSession
   }
 
