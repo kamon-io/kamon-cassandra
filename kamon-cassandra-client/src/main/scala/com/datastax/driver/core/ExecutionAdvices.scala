@@ -87,7 +87,7 @@ object QueryWriteAdvice {
   @Advice.OnMethodEnter
   def onStartWriting(@Advice.This execution: HasContext): Unit = {
     val executionSpan = execution.context.get(Span.Key)
-    executionSpan.mark("writing")
+    executionSpan.mark("cassandra.connection.write-started")
   }
 }
 
