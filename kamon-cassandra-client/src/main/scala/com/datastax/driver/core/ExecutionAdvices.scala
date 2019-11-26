@@ -46,8 +46,8 @@ object QueryExecutionAdvice {
 
     execution.setContext(executionContext)
 
-    executionSpan.tagMetrics("dc", host.getDatacenter)
-    executionSpan.tagMetrics("rack", host.getRack)
+    executionSpan.tagMetrics("cassandra.dc", host.getDatacenter)
+    executionSpan.tagMetrics("cassandra.rack", host.getRack)
     executionSpan.tagMetrics("target", TargetResolver.getTarget(host.getAddress))
   }
 }
