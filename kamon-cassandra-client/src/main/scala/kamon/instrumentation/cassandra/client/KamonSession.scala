@@ -74,10 +74,11 @@ class KamonSession(underlying: Session) extends AbstractSession {
 
     val clientSpan = Kamon.spanBuilder("cassandra.client.query")
       .tagMetrics("span.kind", "client")
-      .tag("cassandra.query", query)
+      .tag("db.statement", query)
+      .tag("db.type", "cassandra")
       .start
 
-    Option(statement.getKeyspace).foreach(ks => clientSpan.tag("cassandra.keyspace", ks))
+    Option(statement.getKeyspace).foreach(ks => clientSpan.tag("db.instance", ks))
     statementKind.foreach(clientSpan.tagMetrics("cassandra.query.kind", _))
 
 

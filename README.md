@@ -116,8 +116,9 @@ Internal driver execution services are instrumented using kamon-executors module
 ## Tracing
 Client Span is created for every `executeAsync` invocation tagged with
 - `span.kind` - `client`
-- `cassandra.query` Query CQL
-- `cassandra.keyspace`
+- `db.statement` Query CQL
+- `db.instance` - keyspace
+- `db.type` - `cassandra`
 - `cassandra.query.kind` - DML statement kind
 - `cassandra.client.rs.session-id` Correlation id for server tracing (if enabled)
 - `cassandra.client.rs.cl` - Achieved consistency level
