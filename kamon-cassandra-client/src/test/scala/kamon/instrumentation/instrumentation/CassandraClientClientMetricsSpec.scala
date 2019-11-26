@@ -17,6 +17,7 @@ package kamon.instrumentation.instrumentation
 
 import com.datastax.driver.core.{Cluster, Session}
 import kamon.instrumentation.cassandra.client.ClientMetrics
+import kamon.instrumentation.executor.ExecutorMetrics
 import kamon.tag.TagSet
 import kamon.testkit.{InstrumentInspection, MetricInspection}
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
@@ -62,7 +63,8 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
       }
 
       eventually(timeout(10 seconds)) {
-        ExecutorQueueMetrics().taskSchedulerTaskCount.value() should be > 0.0
+        val all = ExecutorMetrics.ThreadsTotal.instruments()
+        all.map(_._2.distribution(false).max).forall(_ > 0) === true
       }
     }
 

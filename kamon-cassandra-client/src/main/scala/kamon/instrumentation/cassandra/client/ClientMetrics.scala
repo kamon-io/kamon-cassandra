@@ -19,7 +19,7 @@ package kamon.instrumentation.cassandra.client
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.{ExecutorQueueMetricsExtractor, Session}
+import com.datastax.driver.core.Session
 import kamon.Kamon
 import kamon.instrumentation.cassandra.Cassandra.samplingIntervalMillis
 import kamon.metric._
@@ -54,7 +54,6 @@ object ClientMetrics {
 
 
 
-
   def queryDuration: Histogram =
     Kamon.histogram("cassandra.client.query.duration", MeasurementUnit.time.nanoseconds).withoutTags()
 
@@ -86,8 +85,6 @@ object ClientMetrics {
 
 
 
-
-
   def recordQueryDuration(start: Long, end: Long, statementKind: Option[String]): Unit = {
     val statementTags = TagSet.of("statement.kind", statementKind.getOrElse("other"))
     queryDuration.withTags(statementTags).record(end - start)
@@ -102,8 +99,6 @@ object ClientMetrics {
       override def run(): Unit = {
         val state = session.getState
 
-        ExecutorQueueMetricsExtractor.from(session, ExecutorQueueMetrics())
-
         state.getConnectedHosts.asScala.foreach { host =>
           val hostId = TargetResolver.getTarget(host.getAddress)
           val trashed = state.getTrashedConnections(host)
@@ -116,21 +111,5 @@ object ClientMetrics {
         }
       }
     }, samplingIntervalMillis, samplingIntervalMillis, TimeUnit.MILLISECONDS)
-  }
-
-  case class ExecutorQueueMetrics(executorQueueDepth: Gauge,
-                                  blockingQueueDepth: Gauge,
-                                  reconnectionTaskCount: Gauge,
-                                  taskSchedulerTaskCount: Gauge)
-
-  object ExecutorQueueMetrics {
-    def apply(): ExecutorQueueMetrics = {
-      val generalTags = TagSet.from(Map("component" -> "cassandra-client"))
-      new ExecutorQueueMetrics(
-        Kamon.gauge("cassandra.queue.executor").withTags(generalTags),
-        Kamon.gauge("cassandra.queue.blocking").withTags(generalTags),
-        Kamon.gauge("cassandra.queue.reconnection").withTags(generalTags),
-        Kamon.gauge("cassandra.scheduled-tasks").withTags(generalTags))
-    }
   }
 }

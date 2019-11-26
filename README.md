@@ -105,19 +105,11 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
 
 ## Executor metrics:
 
-#### `cassandra.queue.executor`
-- Gauge 
-- Number of queued up tasks in the main internal executor.
-#### `cassandra.queue.blocking`
-- Gauge 
-- Number of queued up tasks in the blocking executor.
-#### `cassandra.queue.reconnection`
-- Gauge 
-- Number of queued up tasks in the reconnection executor
-#### `cassandra.scheduled-tasks`
-- Gauge 
-- Number of queued up tasks in the scheduled tasks executor.
-
+Internal driver execution services are instrumented using kamon-executors module
+- executor
+- blocking-executor
+- reconnection-executor
+- scheduled-tasks-executor
 
 
 

@@ -17,10 +17,9 @@
 package kamon.instrumentation.cassandra.client
 
 import com.datastax.driver.core._
-import kamon.instrumentation.cassandra.{HasPoolMetrics, HostPoolMetrics, PoolWithMetrics}
+import kamon.instrumentation.cassandra.PoolWithMetrics
 import kamon.instrumentation.cassandra.client.instrumentation.advisor.NewSessionMethodAdvisor
 import kamon.instrumentation.context.HasContext.MixinWithInitializer
-import kamon.metric.Histogram
 import kanela.agent.api.instrumentation.InstrumentationBuilder
 
 

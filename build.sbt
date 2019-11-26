@@ -16,6 +16,7 @@
 
 val kamonCore           = "io.kamon"            %% "kamon-core"               % "2.0.2"
 val kamonTestkit        = "io.kamon"            %% "kamon-testkit"            % "2.0.0-M4"
+val kamonExecutors      = "io.kamon"            %% "kamon-executors"          % "2.0.2"
 
 val kanelaAgent         = "io.kamon"            % "kanela-agent"                    % "1.0.3"
 val kamonInstrument     = "io.kamon"            %% "kamon-instrumentation-common"   % "2.0.0"
@@ -43,6 +44,6 @@ lazy val cassandraClient = (project in file("kamon-cassandra-client"))
   .settings(resolvers += Resolver.mavenLocal)
   .settings(
       libraryDependencies ++=
-        compileScope(kamonCore, cassandraDriver, kamonInstrument) ++
+        compileScope(kamonCore, cassandraDriver, kamonInstrument, kamonExecutors) ++
         providedScope(kanelaAgent) ++
         testScope(cassandraUnit, kamonTestkit, scalatest, slf4jApi, logbackClassic, logbackCore, "io.kamon"    %% "kamon-apm-reporter" % "2.0.0"))
