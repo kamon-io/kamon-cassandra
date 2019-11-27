@@ -68,8 +68,6 @@ class KamonSession(underlying: Session) extends AbstractSession {
     val query = getQuery(statement)
     val statementKind = extractStatementType(query)
 
-    statement.getSerialConsistencyLevel
-
     val clientSpan = Kamon.spanBuilder("cassandra.client.query")
       .tagMetrics("span.kind", "client")
       .tag("db.statement", query)
@@ -77,6 +75,7 @@ class KamonSession(underlying: Session) extends AbstractSession {
       .start
 
     Option(statement.getKeyspace).foreach(ks => clientSpan.tag("db.instance", ks))
+    statementKind.foreach(clientSpan.tag("cassandra.query.kind", _))
     statementKind.foreach(clientSpan.tagMetrics("cassandra.query.kind", _))
 
 
@@ -92,7 +91,6 @@ class KamonSession(underlying: Session) extends AbstractSession {
         throw cause
     }
 
-    CassandraClientMetrics.queryInflight("ALL").increment()
 
     Futures.addCallback(future, new FutureCallback[ResultSet] {
       override def onSuccess(result: ResultSet): Unit = {

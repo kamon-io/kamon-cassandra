@@ -78,12 +78,6 @@ object CassandraClientMetrics {
   def queryCount: Counter =
     QueryCount.withoutTags()
 
-  def queryInflight(host: String): RangeSampler =
-    ClientInflight.withTag("target", host)
-
-
-
-
 
   def errors(host: String): Counter =
    Errors.withTag("target", host)
@@ -107,7 +101,6 @@ object CassandraClientMetrics {
     val statementTags = TagSet.of("statement.kind", statementKind.getOrElse("other"))
     queryDuration.withTags(statementTags).record(end - start)
     queryCount.withTags(statementTags).increment()
-    queryInflight("ALL").decrement()
   }
 
 }

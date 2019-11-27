@@ -47,7 +47,6 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
         inflightPerTarget("127.0.0.1").distribution(false).max should be > 0L
         queryDuration.withTags(statementTags).distribution(false).max should be > 0L
         queryCount.withTags(statementTags).value(false) should be > 0L
-        queryInflight("ALL").distribution().max should be > 0L
 
         errors("127.0.0.1").value(false) should equal (0)
         timeouts("127.0.0.1").value(false) should equal (0)
