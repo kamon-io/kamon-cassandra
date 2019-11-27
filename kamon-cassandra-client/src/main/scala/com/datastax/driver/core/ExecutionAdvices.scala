@@ -8,7 +8,7 @@ import kamon.{Kamon, trace}
 import kamon.context.Context
 import kamon.context.Storage.Scope
 import kamon.instrumentation.cassandra.Cassandra
-import kamon.instrumentation.cassandra.client.{ClientMetrics, TargetResolver}
+import kamon.instrumentation.cassandra.client.{CassandraClientMetrics, TargetResolver}
 import kamon.instrumentation.context
 import kamon.instrumentation.context.HasContext
 import kamon.trace.Span
@@ -34,8 +34,8 @@ object QueryExecutionAdvice {
     val isSpeculative = position > 0
     val operationName = if(isSpeculative) SpeculativeExecutionOperationName else ExecutionOperationName
 
-    if(isSpeculative) ClientMetrics.speculative.increment()
-    if(queryState.get().isCancelled) ClientMetrics.cancelled.increment()
+    if(isSpeculative) CassandraClientMetrics.speculative.increment()
+    if(queryState.get().isCancelled) CassandraClientMetrics.cancelled.increment()
 
     val clientSpan = Kamon.currentSpan()
     val executionSpan = Kamon.spanBuilder(operationName).asChildOf(clientSpan).start()
@@ -46,9 +46,20 @@ object QueryExecutionAdvice {
 
     execution.setContext(executionContext)
 
-    executionSpan.tagMetrics("cassandra.dc", host.getDatacenter)
-    executionSpan.tagMetrics("cassandra.rack", host.getRack)
-    executionSpan.tagMetrics("target", TargetResolver.getTarget(host.getAddress))
+    executionSpan.tag("cassandra.node", TargetResolver.getTarget(host.getAddress))
+    executionSpan.tag("cassandra.dc", host.getDatacenter)
+    executionSpan.tag("cassandra.rack", host.getRack)
+
+    tagExecutionMetrics(executionSpan, host)
+  }
+
+  private def tagExecutionMetrics(executionSpan: Span, host: Host) = {
+    if(Cassandra.config.nodeTags.node)
+      executionSpan.tagMetrics("cassandra.node", TargetResolver.getTarget(host.getAddress))
+    if(Cassandra.config.nodeTags.dc)
+      executionSpan.tagMetrics("cassandra.dc", host.getDatacenter)
+    if(Cassandra.config.nodeTags.rack)
+      executionSpan.tagMetrics("cassandra.rack", host.getRack)
   }
 }
 
@@ -103,7 +114,7 @@ object OnSetAdvice {
     if(response.isInstanceOf[Responses.Result.Prepared]) executionSpan.name(QueryPrepareOperationName)
     if(execution.retryCount() > 0) {
       executionSpan.tag("retry", true)
-      ClientMetrics.retries.increment()
+      CassandraClientMetrics.retries.increment()
     }
     if(response.`type` == Response.Type.ERROR) executionSpan.fail(response.`type`.name())
     //In order to correlate paging requests with initial one, carry context with message
@@ -119,7 +130,7 @@ object OnExceptionAdvice {
                   @Advice.Argument(0) connection: Connection,
                   @Advice.Argument(1) exception: Exception): Unit = {
 
-    ClientMetrics.errors(
+    CassandraClientMetrics.errors(
       TargetResolver.getTarget(connection.address.getAddress)
     ).increment()
 
@@ -136,7 +147,7 @@ object OnTimeoutAdvice {
   def onTimeout(@Advice.This execution: HasContext,
                 @Advice.Argument(0) connection: Connection): Unit = {
 
-    ClientMetrics.timeouts(
+    CassandraClientMetrics.timeouts(
       TargetResolver.getTarget(connection.address.getAddress)
     ).increment()
 

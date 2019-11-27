@@ -1,7 +1,7 @@
 package kamon.instrumentation.cassandra
 
 import com.datastax.driver.core.Host
-import kamon.instrumentation.cassandra.client.{ClientMetrics, TargetResolver}
+import kamon.instrumentation.cassandra.client.{CassandraClientMetrics, TargetResolver}
 
 trait HasPoolMetrics {
   def set(metrics: HostPoolMetrics): Unit
@@ -16,6 +16,6 @@ class PoolWithMetrics extends HasPoolMetrics {
 
 class HostPoolMetrics(host: Host) {
   private val target = TargetResolver.getTarget(host.getAddress)
-  val borrow = ClientMetrics.poolBorrow(target)
-  val inflight = ClientMetrics.inflightPerConnection
+  val borrow = CassandraClientMetrics.poolBorrow(target)
+  val inflight = CassandraClientMetrics.inflightPerConnection
 }

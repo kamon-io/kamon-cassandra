@@ -30,7 +30,7 @@ import scala.util.{Failure, Success, Try}
 
 class KamonSession(underlying: Session) extends AbstractSession {
 
-  ClientMetrics.from(underlying)
+  CassandraClientMetrics.from(underlying)
 
   override def getLoggedKeyspace: String =
     underlying.getLoggedKeyspace
@@ -61,7 +61,7 @@ class KamonSession(underlying: Session) extends AbstractSession {
     */
   def extractStatementType(query: String): Option[String] = {
     Option(query.substring(0, query.indexOf(" ")).toLowerCase)
-      .filter(ClientMetrics.DmlStatementPrefixes.contains)
+      .filter(CassandraClientMetrics.DmlStatementPrefixes.contains)
   }
 
   override def executeAsync(statement: Statement): ResultSetFuture = {
@@ -94,7 +94,7 @@ class KamonSession(underlying: Session) extends AbstractSession {
         throw cause
     }
 
-    ClientMetrics.queryInflight("ALL").increment()
+    CassandraClientMetrics.queryInflight("ALL").increment()
 
     Futures.addCallback(future, new FutureCallback[ResultSet] {
       override def onSuccess(result: ResultSet): Unit = {
@@ -106,12 +106,12 @@ class KamonSession(underlying: Session) extends AbstractSession {
             r.getQueryString
         }
 
-        ClientMetrics.recordQueryDuration(start, System.nanoTime(), statementKind)
+        CassandraClientMetrics.recordQueryDuration(start, System.nanoTime(), statementKind)
         clientSpan.finish()
       }
 
       override def onFailure(cause: Throwable): Unit = {
-        ClientMetrics.recordQueryDuration(start, System.nanoTime(), statementKind)
+        CassandraClientMetrics.recordQueryDuration(start, System.nanoTime(), statementKind)
         clientSpan.fail(cause.getMessage, cause)
         clientSpan.finish()
       }

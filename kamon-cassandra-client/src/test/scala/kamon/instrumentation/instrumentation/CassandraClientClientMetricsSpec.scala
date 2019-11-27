@@ -16,7 +16,7 @@
 package kamon.instrumentation.instrumentation
 
 import com.datastax.driver.core.{Cluster, Session}
-import kamon.instrumentation.cassandra.client.ClientMetrics
+import kamon.instrumentation.cassandra.client.CassandraClientMetrics
 import kamon.instrumentation.executor.ExecutorMetrics
 import kamon.tag.TagSet
 import kamon.testkit.{InstrumentInspection, MetricInspection}
@@ -29,7 +29,7 @@ import scala.util.Try
 
 class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
   with  MetricInspection.Syntax with InstrumentInspection.Syntax  with OptionValues {
-  import ClientMetrics._
+  import CassandraClientMetrics._
 
   "the CassandraClientMetrics" should {
 

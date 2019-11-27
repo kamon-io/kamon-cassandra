@@ -19,9 +19,10 @@ package kamon.instrumentation.cassandra.client
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.Session
+import com.datastax.driver.core.{Host, Session}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.Cassandra.samplingIntervalMillis
+import kamon.instrumentation.cassandra.Cassandra
+import kamon.instrumentation.cassandra.Cassandra.NodeTags
 import kamon.metric._
 import kamon.tag.TagSet
 
@@ -32,56 +33,76 @@ object TargetResolver {
   def getTarget(address: InetAddress): String = address.getHostAddress
 }
 
-object ClientMetrics {
+object CassandraClientMetrics {
 
   val DmlStatementPrefixes = Set("select", "insert", "update", "delete")
 
+
+  val PoolBorrowTime = Kamon.histogram("cassandra.client.pool-borrow-time", MeasurementUnit.time.nanoseconds)
+  val ConnectinPoolSize = Kamon.histogram("cassandra.connection-pool.size")
+  val TrashedConnections = Kamon.histogram("cassandra.trashed-connections")
+  val InflightPerConnection = Kamon.histogram("cassandra.client.inflight-per-connection")
+  val InflightPerTarget = Kamon.histogram("cassandra.client.inflight-per-target")
+  val QueryDuration = Kamon.histogram("cassandra.client.query.duration", MeasurementUnit.time.nanoseconds)
+  val QueryCount = Kamon.counter("cassandra.client.query.count")
+  val ClientInflight = Kamon.rangeSampler("cassandra.client.inflight")
+
+  val Errors = Kamon.counter("cassandra.query.errors")
+  val Timeouts = Kamon.counter("cassandra.query.timeouts")
+  val RetriedExecutions =  Kamon.counter("cassandra.query.retries")
+  val SpeculativeExecutions = Kamon.counter("cassandra.query.speculative")
+  val CanceledExecutions = Kamon.counter("cassandra.query.cancelled")
+
+  class ConnectionMetrics(host: Host, nodeTags: NodeTags) {
+
+  }
+
+
   def poolBorrow(host: String): Histogram =
-    Kamon.histogram("cassandra.client.pool-borrow-time", MeasurementUnit.time.nanoseconds)
-      .withTag("target", host)
+      PoolBorrowTime.withTag("target", host)
 
   def connections(host: String): Histogram =
-    Kamon.histogram("cassandra.connection-pool.size").withTag("target", host)
+    ConnectinPoolSize.withTag("target", host)
 
   def trashedConnections(host: String): Histogram =
-    Kamon.histogram("cassandra.trashed-connections").withTag("target", host)
+    TrashedConnections.withTag("target", host)
 
   def inflightPerConnection: Histogram =
-    Kamon.histogram("cassandra.client.inflight-per-connection").withoutTags()
+    InflightPerConnection.withoutTags()
 
   def inflightDriver(host: String): Histogram =
-    Kamon.histogram("cassandra.client.inflight-per-target").withTag("target", host)
-
+    InflightPerTarget.withTag("target", host)
 
 
   def queryDuration: Histogram =
-    Kamon.histogram("cassandra.client.query.duration", MeasurementUnit.time.nanoseconds).withoutTags()
+    QueryDuration.withoutTags()
 
   def queryCount: Counter =
-    Kamon.counter("cassandra.client.query.count").withoutTags()
+    QueryCount.withoutTags()
 
   def queryInflight(host: String): RangeSampler =
-    Kamon.rangeSampler("cassandra.client.inflight").withTag("target", host)
+    ClientInflight.withTag("target", host)
+
 
 
 
 
   def errors(host: String): Counter =
-    Kamon.counter("cassandra.query.errors").withTag("target", host)
+   Errors.withTag("target", host)
 
   def timeouts(host: String): Counter =
-    Kamon.counter("cassandra.query.timeouts").withTag("target", host)
+    Timeouts.withTag("target", host)
 
   /*Here it would be more valuable to tag with host that's being retried or speculated on than
-  * one defined by a policy so we are dropping it altogether */
+  * one defined by a policy so we are dropping it altogether */`
   def retries: Counter =
-    Kamon.counter("cassandra.query.retries").withoutTags()
+   RetriedExecutions.withoutTags()
 
   def speculative: Counter =
-    Kamon.counter("cassandra.query.speculative").withoutTags()
+    SpeculativeExecutions.withoutTags()
 
   def cancelled: Counter =
-    Kamon.counter("cassandra.query.cancelled").withoutTags()
+    CanceledExecutions.withoutTags()
 
 
 
@@ -110,6 +131,6 @@ object ClientMetrics {
           connections(hostId).record(openConnections)
         }
       }
-    }, samplingIntervalMillis, samplingIntervalMillis, TimeUnit.MILLISECONDS)
+    }, Cassandra.config.samplingIntervalMillis, Cassandra.config.samplingIntervalMillis, TimeUnit.MILLISECONDS)
   }
 }
