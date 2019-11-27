@@ -65,8 +65,8 @@ object CassandraClientMetrics {
   def trashedConnections(host: String): Counter =
     TrashedConnections.withTag("target", host)
 
-  def inflightPerConnection: Histogram =
-    InFlightPerConnection.withoutTags()
+  def inflightPerConnection(host: String): Histogram =
+    InFlightPerConnection.withTag("target", host)
 
   def inflightPerTarget(host: String): Histogram =
     InFlightPerTarget.withTag("target", host)

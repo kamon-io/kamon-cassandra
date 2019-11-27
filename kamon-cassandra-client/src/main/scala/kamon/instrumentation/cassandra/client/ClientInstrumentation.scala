@@ -31,12 +31,12 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(method("newSession"), classOf[NewSessionMethodAdvisor])
 
   onType("com.datastax.driver.core.HostConnectionPool")
-    .mixin(classOf[PoolWithMetrics])
-    .advise(isConstructor, PoolConstructorAdvice)
     .advise(method("borrowConnection"), BorrowAdvice)
     .advise(method("trashConnection"), TrashConnectionAdvice)
     .advise(method("addConnectionIfUnderMaximum"), CreateConnectionAdvice)
     .advise(method("onConnectionDefunct"), ConnectionDefunctAdvice)
+    .advise(isConstructor, PoolConstructorAdvice)
+    .mixin(classOf[PoolWithMetrics])
 
 
 
@@ -56,12 +56,12 @@ class ClientInstrumentation extends InstrumentationBuilder {
 
   //can be split into SpeculativeExecution(query,write) and general Connection.Callback (onXXX methods)
   onType("com.datastax.driver.core.RequestHandler$SpeculativeExecution")
-    .mixin(classOf[MixinWithInitializer])
     .advise(method("query"), QueryExecutionAdvice)
     .advise(method("write"), QueryWriteAdvice)
     .advise(method("onException"), OnExceptionAdvice)
     .advise(method("onTimeout"), OnTimeoutAdvice)
     .advise(method("onSet"), OnSetAdvice)
+    .mixin(classOf[MixinWithInitializer])
 
 
 }

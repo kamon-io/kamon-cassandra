@@ -1,16 +1,13 @@
 package kamon.instrumentation.cassandra.executors
 
-import java.util
-import java.util.concurrent.{Callable, ExecutorService, Future, ScheduledExecutorService, ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
+import java.util.concurrent.{Callable, ExecutorService, ScheduledExecutorService}
 
 import kamon.instrumentation.executor.ExecutorInstrumentation
-import kamon.instrumentation.executor.ExecutorInstrumentation.InstrumentedThreadPool
 import kamon.tag.TagSet
 import kanela.agent.api.instrumentation.InstrumentationBuilder
 import kanela.agent.libs.net.bytebuddy.implementation.bind.annotation.SuperCall
 
 class DriverExecutorInstrumentation extends InstrumentationBuilder {
-  import kamon.instrumentation._
 
   onType("com.datastax.driver.core.ThreadingOptions")
     .intercept(method("createExecutor"), CreateExecutorAdvice)
