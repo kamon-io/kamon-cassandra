@@ -34,6 +34,9 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .mixin(classOf[PoolWithMetrics])
     .advise(isConstructor, PoolConstructorAdvice)
     .advise(method("borrowConnection"), BorrowAdvice)
+    .advise(method("trashConnection"), TrashConnectionAdvice)
+    .advise(method("addConnectionIfUnderMaximum"), CreateConnectionAdvice)
+    .advise(method("onConnectionDefunct"), ConnectionDefunctAdvice)
 
 
 

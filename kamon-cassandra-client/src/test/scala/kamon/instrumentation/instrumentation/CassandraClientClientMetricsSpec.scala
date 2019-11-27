@@ -44,7 +44,7 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
         poolBorrow("127.0.0.1").distribution(false).max shouldBe >= (1L)
         connections("127.0.0.1").distribution(false).max should be > 0L
         inflightPerConnection.distribution(false).max should be > 0L
-        inflightDriver("127.0.0.1").distribution(false).max should be > 0L
+        inflightPerTarget("127.0.0.1").distribution(false).max should be > 0L
         queryDuration.withTags(statementTags).distribution(false).max should be > 0L
         queryCount.withTags(statementTags).value(false) should be > 0L
         queryInflight("ALL").distribution().max should be > 0L

@@ -17,21 +17,19 @@
 package kamon.instrumentation.cassandra.client
 
 import java.net.InetAddress
-import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.{Host, Session}
+import com.datastax.driver.core.Host
 import kamon.Kamon
-import kamon.instrumentation.cassandra.Cassandra
 import kamon.instrumentation.cassandra.Cassandra.NodeTags
 import kamon.metric._
 import kamon.tag.TagSet
 
-import scala.util.Try
 
 
 object TargetResolver {
   def getTarget(address: InetAddress): String = address.getHostAddress
 }
+
 
 object CassandraClientMetrics {
 
@@ -39,10 +37,10 @@ object CassandraClientMetrics {
 
 
   val PoolBorrowTime = Kamon.histogram("cassandra.client.pool-borrow-time", MeasurementUnit.time.nanoseconds)
-  val ConnectinPoolSize = Kamon.histogram("cassandra.connection-pool.size")
-  val TrashedConnections = Kamon.histogram("cassandra.trashed-connections")
-  val InflightPerConnection = Kamon.histogram("cassandra.client.inflight-per-connection")
-  val InflightPerTarget = Kamon.histogram("cassandra.client.inflight-per-target")
+  val ConnectionPoolSize = Kamon.rangeSampler("cassandra.connection-pool.size")
+  val TrashedConnections = Kamon.counter("cassandra.trashed-connections")
+  val InFlightPerConnection = Kamon.histogram("cassandra.client.inflight-per-connection") // Recorded at the moment of borrow, connection saturation
+  val InFlightPerTarget = Kamon.histogram("cassandra.client.inflight-per-target")
   val QueryDuration = Kamon.histogram("cassandra.client.query.duration", MeasurementUnit.time.nanoseconds)
   val QueryCount = Kamon.counter("cassandra.client.query.count")
   val ClientInflight = Kamon.rangeSampler("cassandra.client.inflight")
@@ -61,17 +59,17 @@ object CassandraClientMetrics {
   def poolBorrow(host: String): Histogram =
       PoolBorrowTime.withTag("target", host)
 
-  def connections(host: String): Histogram =
-    ConnectinPoolSize.withTag("target", host)
+  def connections(host: String): RangeSampler =
+    ConnectionPoolSize.withTag("target", host)
 
-  def trashedConnections(host: String): Histogram =
+  def trashedConnections(host: String): Counter =
     TrashedConnections.withTag("target", host)
 
   def inflightPerConnection: Histogram =
-    InflightPerConnection.withoutTags()
+    InFlightPerConnection.withoutTags()
 
-  def inflightDriver(host: String): Histogram =
-    InflightPerTarget.withTag("target", host)
+  def inflightPerTarget(host: String): Histogram =
+    InFlightPerTarget.withTag("target", host)
 
 
   def queryDuration: Histogram =
@@ -94,7 +92,7 @@ object CassandraClientMetrics {
     Timeouts.withTag("target", host)
 
   /*Here it would be more valuable to tag with host that's being retried or speculated on than
-  * one defined by a policy so we are dropping it altogether */`
+  * one defined by a policy so we are dropping it altogether */
   def retries: Counter =
    RetriedExecutions.withoutTags()
 
@@ -105,7 +103,6 @@ object CassandraClientMetrics {
     CanceledExecutions.withoutTags()
 
 
-
   def recordQueryDuration(start: Long, end: Long, statementKind: Option[String]): Unit = {
     val statementTags = TagSet.of("statement.kind", statementKind.getOrElse("other"))
     queryDuration.withTags(statementTags).record(end - start)
@@ -113,24 +110,4 @@ object CassandraClientMetrics {
     queryInflight("ALL").decrement()
   }
 
-  def from(session: Session): Unit = {
-    import scala.collection.JavaConverters._
-
-    Kamon.scheduler().scheduleAtFixedRate(new Runnable {
-      override def run(): Unit = {
-        val state = session.getState
-
-        state.getConnectedHosts.asScala.foreach { host =>
-          val hostId = TargetResolver.getTarget(host.getAddress)
-          val trashed = state.getTrashedConnections(host)
-          val openConnections = state.getOpenConnections(host)
-          val inflightCount = state.getInFlightQueries(host)
-
-          trashedConnections(hostId).record(trashed)
-          inflightDriver(hostId).record(inflightCount)
-          connections(hostId).record(openConnections)
-        }
-      }
-    }, Cassandra.config.samplingIntervalMillis, Cassandra.config.samplingIntervalMillis, TimeUnit.MILLISECONDS)
-  }
 }

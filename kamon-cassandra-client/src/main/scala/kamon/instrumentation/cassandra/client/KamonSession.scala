@@ -30,8 +30,6 @@ import scala.util.{Failure, Success, Try}
 
 class KamonSession(underlying: Session) extends AbstractSession {
 
-  CassandraClientMetrics.from(underlying)
-
   override def getLoggedKeyspace: String =
     underlying.getLoggedKeyspace
 
