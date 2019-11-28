@@ -4,15 +4,14 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.{HasPoolMetrics, HostPoolMetrics}
-import kamon.instrumentation.cassandra.client.TargetResolver
+import kamon.instrumentation.cassandra.{HasPoolMetrics, PoolMetrics, TargetResolver}
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 
 object PoolConstructorAdvice {
   @Advice.OnMethodExit
   def onConstructed(@Advice.This poolWithMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
-    poolWithMetrics.setMetrics(new HostPoolMetrics(host))
+    poolWithMetrics.setMetrics(new PoolMetrics(host))
   }
 }
 
@@ -69,7 +68,7 @@ object TrashConnectionAdvice {
 object CreateConnectionAdvice {
   @Advice.OnMethodExit
   def onConnectionCreated(@Advice.This hasPoolMetrics: HasPoolMetrics, @Advice.Return created: Boolean): Unit =
-    if(created) {
+    if (created) {
       hasPoolMetrics.getMetrics.size.increment()
     }
 }

@@ -17,18 +17,18 @@
 package kamon.instrumentation.cassandra.client
 
 import com.datastax.driver.core._
-import kamon.instrumentation.cassandra.PoolWithMetrics
-import kamon.instrumentation.cassandra.client.instrumentation.advisor.NewSessionMethodAdvisor
+import kamon.instrumentation.cassandra.{ExecutionMetrics, PoolWithMetrics, QueryMetrics}
 import kamon.instrumentation.context.HasContext.MixinWithInitializer
 import kanela.agent.api.instrumentation.InstrumentationBuilder
 
 
 class ClientInstrumentation extends InstrumentationBuilder {
+
   import kamon.instrumentation._
 
 
   onType("com.datastax.driver.core.Cluster$Manager")
-    .advise(method("newSession"), classOf[NewSessionMethodAdvisor])
+    .intercept(method("newSession"), SessionInterceptor)
 
   onType("com.datastax.driver.core.HostConnectionPool")
     .advise(method("borrowConnection"), BorrowAdvice)
@@ -37,7 +37,7 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(method("onConnectionDefunct"), ConnectionDefunctAdvice)
     .advise(isConstructor, PoolConstructorAdvice)
     .mixin(classOf[PoolWithMetrics])
-
+    .mixin(classOf[ExecutionMetrics])
 
 
   onSubTypesOf("com.datastax.driver.core.Message$Response")
@@ -46,13 +46,16 @@ class ClientInstrumentation extends InstrumentationBuilder {
   onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
     .mixin(classOf[MixinWithInitializer])
 
-
   onType("com.datastax.driver.core.ArrayBackedResultSet")
     .advise(method("fromMessage"), OnResultSetConstruction)
 
   onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
     .advise(method("queryNextPage"), OnFetchMore)
 
+
+  onType("com.datastax.driver.core.Host")
+    .mixin(classOf[ExecutionMetrics])
+    .advise(isConstructor, HostConstructor)
 
   //can be split into SpeculativeExecution(query,write) and general Connection.Callback (onXXX methods)
   onType("com.datastax.driver.core.RequestHandler$SpeculativeExecution")
@@ -62,6 +65,7 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(method("onTimeout"), OnTimeoutAdvice)
     .advise(method("onSet"), OnSetAdvice)
     .mixin(classOf[MixinWithInitializer])
+
 
 
 }

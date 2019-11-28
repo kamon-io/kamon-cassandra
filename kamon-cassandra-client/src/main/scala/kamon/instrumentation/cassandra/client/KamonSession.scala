@@ -19,11 +19,10 @@ import java.nio.ByteBuffer
 import java.util
 
 import com.datastax.driver.core._
-import com.google.common.base.{CaseFormat, Function}
+import com.google.common.base.Function
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import kamon.Kamon
-import kamon.context.BinaryPropagation.ByteStreamWriter
-import kamon.context.Context
+import kamon.instrumentation.cassandra.CassandraClientMetrics
 import kamon.trace.Span
 
 import scala.util.{Failure, Success, Try}
@@ -54,6 +53,7 @@ class KamonSession(underlying: Session) extends AbstractSession {
   /** Try extracting type of a DML statement based on query string prefix.
     * It could be done matching on QueryBuilder statement subtypes but fails on SimpleStatements
     * http://cassandra.apache.org/doc/latest/cql/dml.html
+    *
     * @param query query string
     * @return dml statement type, none if not a dml statement
     */
@@ -63,8 +63,6 @@ class KamonSession(underlying: Session) extends AbstractSession {
   }
 
   override def executeAsync(statement: Statement): ResultSetFuture = {
-    val start = System.nanoTime()
-
     val query = getQuery(statement)
     val statementKind = extractStatementType(query)
 
@@ -72,12 +70,10 @@ class KamonSession(underlying: Session) extends AbstractSession {
       .tagMetrics("span.kind", "client")
       .tag("db.statement", query)
       .tag("db.type", "cassandra")
+      .tagMetrics("cassandra.query.kind", statementKind.getOrElse("other"))
       .start
 
     Option(statement.getKeyspace).foreach(ks => clientSpan.tag("db.instance", ks))
-    statementKind.foreach(clientSpan.tag("cassandra.query.kind", _))
-    statementKind.foreach(clientSpan.tagMetrics("cassandra.query.kind", _))
-
 
     val future = Try(
       Kamon.runWithContext(Kamon.currentContext().withEntry(Span.Key, clientSpan)) {
@@ -95,19 +91,16 @@ class KamonSession(underlying: Session) extends AbstractSession {
     Futures.addCallback(future, new FutureCallback[ResultSet] {
       override def onSuccess(result: ResultSet): Unit = {
         recordClientQueryExecutionInfo(clientSpan, result)
-        result.getExecutionInfo.getStatement match  {
-          case b:BoundStatement =>
+        result.getExecutionInfo.getStatement match {
+          case b: BoundStatement =>
             b.preparedStatement.getQueryString
-          case r:RegularStatement =>
+          case r: RegularStatement =>
             r.getQueryString
         }
-
-        CassandraClientMetrics.recordQueryDuration(start, System.nanoTime(), statementKind)
         clientSpan.finish()
       }
 
       override def onFailure(cause: Throwable): Unit = {
-        CassandraClientMetrics.recordQueryDuration(start, System.nanoTime(), statementKind)
         clientSpan.fail(cause.getMessage, cause)
         clientSpan.finish()
       }
@@ -145,16 +138,9 @@ class KamonSession(underlying: Session) extends AbstractSession {
     underlying.getState
 
 
-  def getQuery(statement: Statement):String =  statement match  {
-    case b:BoundStatement => b.preparedStatement.getQueryString
-    case r:RegularStatement => r.getQueryString
+  def getQuery(statement: Statement): String = statement match {
+    case b: BoundStatement => b.preparedStatement.getQueryString
+    case r: RegularStatement => r.getQueryString
   }
 
-
-  private class BBBackedByteStreamWriter extends ByteStreamWriter {
-    val underlying = ByteBuffer.allocate(16)
-    override def write(bytes: Array[Byte]): Unit = underlying.put(bytes)
-    override def write(bytes: Array[Byte], offset: Int, count: Int): Unit = underlying.put(bytes, offset, count)
-    override def write(byte: Int): Unit = underlying.put(byte.toByte)
-  }
 }
