@@ -5,7 +5,7 @@ import kamon.instrumentation.cassandra.Cassandra
 import kamon.instrumentation.cassandra.Cassandra.TargetNode
 import kamon.metric._
 
-
+//TODO descriptions
 object PoolMetrics {
   val PoolBorrowTime        = Kamon.histogram("cassandra.client.pool.borrow-time", MeasurementUnit.time.nanoseconds)
   val ConnectionPoolSize    = Kamon.rangeSampler("cassandra.client.pool.size")

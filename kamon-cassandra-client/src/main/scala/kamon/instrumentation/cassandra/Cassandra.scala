@@ -14,6 +14,9 @@ object Cassandra {
 
   @volatile var config: ClientInstrumentationConfig = loadConfig(Kamon.config())
 
+  private val UnknownTargetTagValue = "unknown"
+
+
   def loadConfig(config: Config) = ClientInstrumentationConfig(
     config.getDuration("kamon.cassandra.sample-interval").toMillis,
     NodeTags(
@@ -28,8 +31,14 @@ object Cassandra {
       config = loadConfig(newConfig)
   })
 
-  def targetFromHost(host: Host): TargetNode =
-    TargetNode(host.getAddress.getHostAddress, host.getDatacenter, host.getRack)
+  def targetFromHost(host: Host): TargetNode = {
+    TargetNode(
+      host.getAddress.getHostAddress,
+      Option(host.getDatacenter).getOrElse(UnknownTargetTagValue),
+      Option(host.getRack).getOrElse(UnknownTargetTagValue)
+    )
+  }
+
 
   def targetTags(target: TargetNode): TagSet = {
     TagSet.from(
