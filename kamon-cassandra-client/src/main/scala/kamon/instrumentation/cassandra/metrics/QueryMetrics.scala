@@ -8,11 +8,11 @@ import kamon.metric.Counter
 import kamon.trace.Span
 //TODO descriptions
 object QueryMetrics {
-  val Errors                = Kamon.counter("cassandra.query.errors")
-  val Timeouts              = Kamon.counter("cassandra.query.timeouts")
-  val RetriedExecutions     = Kamon.counter("cassandra.query.retries")
-  val SpeculativeExecutions = Kamon.counter("cassandra.query.speculative")
-  val CanceledExecutions    = Kamon.counter("cassandra.query.cancelled")
+  val Errors                = Kamon.counter("cassandra.query.errors", "Count of executions that resulted in error")
+  val Timeouts              = Kamon.counter("cassandra.query.timeouts", "Count of executions that timed-out")
+  val RetriedExecutions     = Kamon.counter("cassandra.query.retries", "Count of executions that were retries")
+  val SpeculativeExecutions = Kamon.counter("cassandra.query.speculative", "Count of executions that were triggered by speculative execution strategy")
+  val CanceledExecutions    = Kamon.counter("cassandra.query.cancelled", "Count of executions that were cancelled mid-flight")
 
   def forHost(host: Host): QueryMetrics = new QueryMetrics(Cassandra.targetFromHost(host))
 }
