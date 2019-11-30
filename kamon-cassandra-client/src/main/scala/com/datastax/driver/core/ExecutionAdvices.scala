@@ -7,7 +7,7 @@ import com.datastax.driver.core.RequestHandler.QueryState
 import kamon.{Kamon, trace}
 import kamon.context.Context
 import kamon.context.Storage.Scope
-import kamon.instrumentation.cassandra.{HasQueryMetrics, QueryMetrics}
+import kamon.instrumentation.cassandra.metrics.{HasQueryMetrics, QueryMetrics}
 import kamon.instrumentation.context.HasContext
 import kamon.trace.Span
 import kanela.agent.libs.net.bytebuddy.asm.Advice

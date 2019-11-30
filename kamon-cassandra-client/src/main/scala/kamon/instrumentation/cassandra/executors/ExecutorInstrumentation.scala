@@ -9,6 +9,7 @@ import kanela.agent.libs.net.bytebuddy.implementation.bind.annotation.SuperCall
 
 class DriverExecutorInstrumentation extends InstrumentationBuilder {
 
+  /*Wraps all internaly created executors with Kamon-instrumented ones*/
   onType("com.datastax.driver.core.ThreadingOptions")
     .intercept(method("createExecutor"), CreateExecutorAdvice)
     .intercept(method("createBlockingExecutor"), CreateBlockingTasksExecutorAdvice)

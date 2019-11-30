@@ -17,7 +17,7 @@
 package kamon.instrumentation.cassandra.client
 
 import com.datastax.driver.core._
-import kamon.instrumentation.cassandra.{ExecutionMetrics, PoolWithMetrics, QueryMetrics}
+import kamon.instrumentation.cassandra.metrics.{PoolWithQueryMetrics, PoolWithMetrics}
 import kamon.instrumentation.context.HasContext.MixinWithInitializer
 import kanela.agent.api.instrumentation.InstrumentationBuilder
 
@@ -26,11 +26,14 @@ class ClientInstrumentation extends InstrumentationBuilder {
 
   import kamon.instrumentation._
 
-
+  /*Wapps client session with traced Kamon one*/
   onType("com.datastax.driver.core.Cluster$Manager")
     .intercept(method("newSession"), SessionInterceptor)
 
-
+  /*Instrument  connection pools (one per target host)
+  * Pool size is incremented on pool init and when new connections are added
+  * and decremented when connection is deemed defunct or explicitly trashed.
+  * Pool metrics are mixed in the pool object itself*/
   onType("com.datastax.driver.core.HostConnectionPool")
     .advise(method("borrowConnection"), BorrowAdvice)
     .advise(method("trashConnection"), TrashConnectionAdvice)
@@ -39,27 +42,11 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(isConstructor, PoolConstructorAdvice)
     .advise(method("initAsync"), InitPoolAdvice)
     .mixin(classOf[PoolWithMetrics])
-    .mixin(classOf[ExecutionMetrics])
 
-
-  onSubTypesOf("com.datastax.driver.core.Message$Response")
-    .mixin(classOf[MixinWithInitializer])
-
-  onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
-    .mixin(classOf[MixinWithInitializer])
-
-  onType("com.datastax.driver.core.ArrayBackedResultSet")
-    .advise(method("fromMessage"), OnResultSetConstruction)
-
-  onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
-    .advise(method("queryNextPage"), OnFetchMore)
-
-
-  onType("com.datastax.driver.core.Host")
-    .mixin(classOf[ExecutionMetrics])
-    .advise(isConstructor, HostConstructor)
-
-  //can be split into SpeculativeExecution(query,write) and general Connection.Callback (onXXX methods)
+  /*Trace each query sub-execution as a child of client query,
+  * this includes retries, speculative executions and fetchMore executions.
+  * Once response is ready (onSet), context is carried via Message.Response mixin
+  * to be used for further fetches*/
   onType("com.datastax.driver.core.RequestHandler$SpeculativeExecution")
     .advise(method("query"), QueryExecutionAdvice)
     .advise(method("write"), QueryWriteAdvice)
@@ -67,6 +54,28 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(method("onTimeout"), OnTimeoutAdvice)
     .advise(method("onSet"), OnSetAdvice)
     .mixin(classOf[MixinWithInitializer])
+
+  onSubTypesOf("com.datastax.driver.core.Message$Response")
+    .mixin(classOf[MixinWithInitializer])
+
+  onType("com.datastax.driver.core.ArrayBackedResultSet")
+    .advise(method("fromMessage"), OnResultSetConstruction)
+
+
+  /*In order for fetchMore execution to be a sibling of original execution
+  * we need to carry parent-span id through result sets */
+  onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
+    .mixin(classOf[MixinWithInitializer])
+  onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
+    .advise(method("queryNextPage"), OnFetchMore)
+
+  /*Query metrics are tagged with target information (based on config)
+  * so all query metrics are mixed into a Host object*/
+  onType("com.datastax.driver.core.Host")
+    .mixin(classOf[PoolWithQueryMetrics])
+    .advise(isConstructor, HostConstructor)
+
+
 
 
 

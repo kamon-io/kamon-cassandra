@@ -1,7 +1,4 @@
-package kamon.instrumentation.cassandra
-
-import com.datastax.driver.core.Host
-import kamon.metric.{Counter, Histogram, RangeSampler}
+package kamon.instrumentation.cassandra.metrics
 
 trait HasPoolMetrics {
   def setMetrics(metrics: PoolMetrics): Unit
@@ -14,7 +11,6 @@ class PoolWithMetrics extends HasPoolMetrics {
   def getMetrics: PoolMetrics = _metrics
 }
 
-//TODO pass in tagSet or?1
 
 
 trait HasQueryMetrics {
@@ -22,7 +18,7 @@ trait HasQueryMetrics {
   def getMetrics: QueryMetrics
 }
 
-class ExecutionMetrics extends HasQueryMetrics {
+class PoolWithQueryMetrics extends HasQueryMetrics {
   private var _metrics: QueryMetrics = _
   override def setMetrics(metrics: QueryMetrics): Unit = _metrics = metrics
   override def getMetrics: QueryMetrics = _metrics

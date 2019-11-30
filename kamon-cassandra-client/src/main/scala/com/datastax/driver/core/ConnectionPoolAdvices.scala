@@ -4,7 +4,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.{Cassandra, HasPoolMetrics, PoolMetrics}
+import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, PoolMetrics}
+import kamon.instrumentation.cassandra.Cassandra
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 
@@ -65,7 +66,6 @@ object InitPoolAdvice {
 
     done.addListener(new Runnable {
       override def run(): Unit = {
-        println(s"INITED with ${openConnections.get()}")
         hasPoolMetrics.getMetrics.size.increment(openConnections.get())
       }
     }, Kamon.scheduler())
