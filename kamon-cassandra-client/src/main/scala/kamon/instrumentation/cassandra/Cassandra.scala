@@ -1,10 +1,14 @@
 package kamon.instrumentation.cassandra
 
+import com.datastax.driver.core.Host
 import com.typesafe.config.Config
 import kamon.Configuration.OnReconfigureHook
 import kamon.Kamon
+import kamon.tag.TagSet
 
 object Cassandra {
+
+  case class TargetNode(address: String, dc: String, rack: String)
   case class NodeTags(node: Boolean, rack: Boolean, dc: Boolean)
   case class ClientInstrumentationConfig(samplingIntervalMillis: Long, nodeTags: NodeTags)
 
@@ -23,5 +27,18 @@ object Cassandra {
     override def onReconfigure(newConfig: Config): Unit =
       config = loadConfig(newConfig)
   })
+
+  def targetFromHost(host: Host): TargetNode =
+    TargetNode(host.getAddress.getHostAddress, host.getDatacenter, host.getRack)
+
+  def targetTags(target: TargetNode): TagSet = {
+    TagSet.from(
+      Seq(
+        Some("target" -> target.address).filter(_ => config.nodeTags.node),
+        Some("dc" -> target.dc).filter(_ => config.nodeTags.dc),
+        Some("rack" -> target.rack).filter(_ => config.nodeTags.rack)
+      ).flatten.toMap
+    )
+  }
 
 }

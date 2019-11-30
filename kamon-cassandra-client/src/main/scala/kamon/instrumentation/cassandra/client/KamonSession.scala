@@ -22,12 +22,16 @@ import com.datastax.driver.core._
 import com.google.common.base.Function
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.CassandraClientMetrics
 import kamon.trace.Span
 
 import scala.util.{Failure, Success, Try}
 
+object KamonSession {
+  val DmlStatementPrefixes = Set("select", "insert", "update", "delete")
+}
+
 class KamonSession(underlying: Session) extends AbstractSession {
+  import KamonSession._
 
   override def getLoggedKeyspace: String =
     underlying.getLoggedKeyspace
@@ -59,7 +63,7 @@ class KamonSession(underlying: Session) extends AbstractSession {
     */
   def extractStatementType(query: String): Option[String] = {
     Option(query.substring(0, query.indexOf(" ")).toLowerCase)
-      .filter(CassandraClientMetrics.DmlStatementPrefixes.contains)
+      .filter(DmlStatementPrefixes.contains)
   }
 
   override def executeAsync(statement: Statement): ResultSetFuture = {

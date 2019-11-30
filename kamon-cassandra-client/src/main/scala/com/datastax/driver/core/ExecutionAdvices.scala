@@ -20,7 +20,7 @@ object QueryOperations {
 }
 
 object HostConstructor {
-  @Advice.OnMethodEnter
+  @Advice.OnMethodExit
   def onHostCreated(@Advice.This host: Host with HasQueryMetrics): Unit = {
     host.setMetrics(
       QueryMetrics.forHost(host)
@@ -56,7 +56,7 @@ object QueryExecutionAdvice {
 
     execution.setContext(executionContext)
 
-    metrics.tagSpanMetrics(executionSpan, host)
+    metrics.tagSpanMetrics(executionSpan)
   }
 }
 
@@ -131,9 +131,7 @@ object OnExceptionAdvice {
                   @Advice.FieldValue("current") currentHost: Host with HasQueryMetrics): Unit = {
 
     val metrics = currentHost.getMetrics
-    metrics.errors(
-      metrics.getTarget(connection.address.getAddress)
-    ).increment()
+    metrics.errors.increment()
 
     val executionSpan = execution.context.get(Span.Key)
     executionSpan.fail(exception)
@@ -149,9 +147,7 @@ object OnTimeoutAdvice {
                 @Advice.Argument(0) connection: Connection,
                 @Advice.FieldValue("current") currentHost: Host with HasQueryMetrics): Unit = {
     val metrics = currentHost.getMetrics
-    metrics.timeouts(
-      metrics.getTarget(connection.address.getAddress)
-    ).increment()
+    metrics.timeouts.increment()
 
     val executionSpan = execution.context.get(Span.Key)
     executionSpan.fail("timeout")

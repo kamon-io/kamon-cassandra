@@ -57,7 +57,7 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
         executionSpan should not be empty
 
         executionSpan.get.parentId should equal (clientSpan.get.id)
-        executionSpan.get.marks.find(_.key == "writing") should not be empty
+        executionSpan.get.marks.find(_.key == "cassandra.connection.write-started") should not be empty
       }
     }
 

@@ -4,14 +4,14 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.{HasPoolMetrics, PoolMetrics, TargetResolver}
+import kamon.instrumentation.cassandra.{Cassandra, HasPoolMetrics, PoolMetrics}
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 
 object PoolConstructorAdvice {
   @Advice.OnMethodExit
   def onConstructed(@Advice.This poolWithMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
-    poolWithMetrics.setMetrics(new PoolMetrics(host))
+    poolWithMetrics.setMetrics(new PoolMetrics(Cassandra.targetFromHost(host)))
   }
 }
 
@@ -56,12 +56,19 @@ object BorrowAdvice {
 * Incremented when new connection requested and decremented either on
 * connection being explicitly trashed or defunct
 * */
-object TrashConnectionAdvice {
+object InitPoolAdvice {
   @Advice.OnMethodExit
-  def onConnectionTrashed(@Advice.This hasPoolMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
-    val metrics = hasPoolMetrics.getMetrics
-    metrics.trashedConnections.increment()
-    metrics.size.decrement()
+  def onPoolInited(
+                    @Advice.This hasPoolMetrics: HasPoolMetrics,
+                    @Advice.Return done: ListenableFuture[_],
+                  @Advice.FieldValue("open") openConnections: AtomicInteger): Unit = {
+
+    done.addListener(new Runnable {
+      override def run(): Unit = {
+        println(s"INITED with ${openConnections.get()}")
+        hasPoolMetrics.getMetrics.size.increment(openConnections.get())
+      }
+    }, Kamon.scheduler())
   }
 }
 
@@ -72,6 +79,16 @@ object CreateConnectionAdvice {
       hasPoolMetrics.getMetrics.size.increment()
     }
 }
+
+object TrashConnectionAdvice {
+  @Advice.OnMethodExit
+  def onConnectionTrashed(@Advice.This hasPoolMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
+    val metrics = hasPoolMetrics.getMetrics
+    metrics.trashedConnections.increment()
+    metrics.size.decrement()
+  }
+}
+
 
 object ConnectionDefunctAdvice {
   @Advice.OnMethodExit

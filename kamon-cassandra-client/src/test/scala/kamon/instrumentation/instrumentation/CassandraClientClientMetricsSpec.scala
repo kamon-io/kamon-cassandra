@@ -15,8 +15,10 @@
 
 package kamon.instrumentation.instrumentation
 
-import com.datastax.driver.core.{Cluster, Session}
-import kamon.instrumentation.cassandra.CassandraClientMetrics
+import com.datastax.driver.core.Session
+import kamon.Kamon
+import kamon.instrumentation.cassandra.Cassandra.TargetNode
+import kamon.instrumentation.cassandra.{PoolMetrics, QueryMetrics}
 import kamon.instrumentation.executor.ExecutorMetrics
 import kamon.tag.TagSet
 import kamon.testkit.{InstrumentInspection, MetricInspection}
@@ -28,36 +30,49 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, WordSpec}
 import scala.util.Try
 
 class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
-  with  MetricInspection.Syntax with InstrumentInspection.Syntax  with OptionValues {
-  import CassandraClientMetrics._
+  with MetricInspection.Syntax with InstrumentInspection.Syntax with OptionValues {
+
 
   "the CassandraClientMetrics" should {
 
     "track client metrics" in {
-      for(_ <- 1 to 100) yield {
+      for (_ <- 1 to 100) yield {
         session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
       }
 
-      val statementTags = TagSet.of("statement.kind", "select")
+      val node = TargetNode("127.0.0.1", "datacenter1", "rack1")
+      val poolMetrics = new PoolMetrics(node)
+      val queryMetrics = new QueryMetrics(node)
 
       eventually(timeout(3 seconds)) {
-        poolBorrow("127.0.0.1").distribution(false).max shouldBe >= (1L)
-        connections("127.0.0.1").distribution(false).max should be > 0L
-        //inflightPerConnection.distribution(false).max should be > 0L
-        inflightPerTarget("127.0.0.1").distribution(false).max should be > 0L
-        queryDuration.withTags(statementTags).distribution(false).max should be > 0L
+        poolMetrics.borrow.distribution(false).max shouldBe >=(1L)
+        poolMetrics.size.distribution(false).max should be > 0L
+        poolMetrics.inflightPerConnection.distribution(false).max should be > 0L
+        poolMetrics.inflightPerHost.distribution(false).max should be > 0L
 
-
-       /* errors("127.0.0.1").value(false) should equal (0)
-        timeouts("127.0.0.1").value(false) should equal (0)
-        retries.value(false) should equal (0)
-        speculative.value(false) should equal (0)
-        cancelled.value(false) should equal (0)*/
+        queryMetrics.errors.value(true) should equal(0)
+        queryMetrics.timeouts.value(true) should equal(0)
+        queryMetrics.retries.value(true) should equal(0)
+        queryMetrics.speculative.value(true) should equal(0)
+        queryMetrics.cancelled.value(true) should equal(0)
       }
+
+      val spanProcessingTime = Kamon.timer("span.processing-time").withTags(
+        TagSet.from(
+          Map(
+            "cassandra.query.kind" -> "insert",
+            "span.kind" -> "client",
+            "operation" -> "cassandra.client.query",
+            "error" -> false
+          )
+        )
+      )
+
+      spanProcessingTime.distribution().max should be > 0L
     }
 
     "track the cassandra client executors queue size" in {
-      for(_ <- 1 to 10) yield {
+      for (_ <- 1 to 10) yield {
         session.executeAsync(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
       }
 
@@ -69,7 +84,7 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
 
   }
 
-  var session:Session = _
+  var session: Session = _
 
 
   override protected def beforeAll(): Unit = {
@@ -78,7 +93,7 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
 
   private def startCassandra(): Unit = {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
-    //EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+    Try(EmbeddedCassandraServerHelper.cleanEmbeddedCassandra())
     session = getSession
   }
 

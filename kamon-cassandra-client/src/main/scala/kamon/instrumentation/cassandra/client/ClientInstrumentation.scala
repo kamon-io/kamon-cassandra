@@ -30,12 +30,14 @@ class ClientInstrumentation extends InstrumentationBuilder {
   onType("com.datastax.driver.core.Cluster$Manager")
     .intercept(method("newSession"), SessionInterceptor)
 
+
   onType("com.datastax.driver.core.HostConnectionPool")
     .advise(method("borrowConnection"), BorrowAdvice)
     .advise(method("trashConnection"), TrashConnectionAdvice)
     .advise(method("addConnectionIfUnderMaximum"), CreateConnectionAdvice)
     .advise(method("onConnectionDefunct"), ConnectionDefunctAdvice)
     .advise(isConstructor, PoolConstructorAdvice)
+    .advise(method("initAsync"), InitPoolAdvice)
     .mixin(classOf[PoolWithMetrics])
     .mixin(classOf[ExecutionMetrics])
 
