@@ -15,7 +15,7 @@
 
 
 val kamonCore           = "io.kamon"            %% "kamon-core"               % "2.0.2"
-val kamonTestkit        = "io.kamon"            %% "kamon-testkit"            % "2.0.0-M4"
+val kamonTestkit        = "io.kamon"            %% "kamon-testkit"            % "2.0.2"
 val kamonExecutors      = "io.kamon"            %% "kamon-executors"          % "2.0.2"
 
 val kanelaAgent         = "io.kamon"            % "kanela-agent"                    % "1.0.5-a22440f76424ba69c4f16afd4ce36c1abf699aee"
