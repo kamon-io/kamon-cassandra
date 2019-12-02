@@ -4,13 +4,16 @@ import com.datastax.driver.core.Host
 import com.typesafe.config.Config
 import kamon.Configuration.OnReconfigureHook
 import kamon.Kamon
+import kamon.instrumentation.trace.SpanTagger
+import kamon.instrumentation.trace.SpanTagger.TagMode
 import kamon.tag.TagSet
+import kamon.trace.Span
 
 object Cassandra {
 
   case class TargetNode(address: String, dc: String, rack: String)
-  case class NodeTags(node: Boolean, rack: Boolean, dc: Boolean)
-  case class ClientInstrumentationConfig(samplingIntervalMillis: Long, nodeTags: NodeTags)
+  case class NodeTags(node: TagMode, rack: TagMode, dc: TagMode)
+  case class ClientInstrumentationConfig(nodeTags: NodeTags)
 
   @volatile var config: ClientInstrumentationConfig = loadConfig(Kamon.config())
 
@@ -18,11 +21,10 @@ object Cassandra {
 
 
   def loadConfig(config: Config) = ClientInstrumentationConfig(
-    config.getDuration("kamon.cassandra.sample-interval").toMillis,
     NodeTags(
-      node = config.getBoolean("kamon.cassandra.tracing.tag.node"),
-      rack = config.getBoolean("kamon.cassandra.tracing.tag.rack"),
-      dc   = config.getBoolean("kamon.cassandra.tracing.tag.dc"),
+      node = TagMode.from(config.getString("kamon.cassandra.tracing.tag.node")),
+      rack = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
+      dc   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
     )
   )
 
@@ -40,14 +42,23 @@ object Cassandra {
   }
 
 
-  def targetTags(target: TargetNode): TagSet = {
-    TagSet.from(
-      Seq(
-        Some("target" -> target.address).filter(_ => config.nodeTags.node),
-        Some("dc" -> target.dc).filter(_ => config.nodeTags.dc),
-        Some("rack" -> target.rack).filter(_ => config.nodeTags.rack)
-      ).flatten.toMap
+  def targetMetricTags(target: TargetNode): TagSet = {
+    val metricEnabledTags = Seq(
+      ("target", target.address, config.nodeTags.node),
+      ("dc", target.dc, config.nodeTags.dc),
+      ("rack", target.rack, config.nodeTags.rack)
     )
+      .filter(_._3 == TagMode.Metric)
+      .map { case (tag, value, _) => tag -> value }
+      .toMap
+
+    TagSet.from(metricEnabledTags)
+  }
+
+  def tagSpanWithTarget(target: TargetNode, span: Span): Unit = {
+    SpanTagger.tag(span, "target", target.address, config.nodeTags.node)
+    SpanTagger.tag(span, "dc", target.dc, config.nodeTags.dc)
+    SpanTagger.tag(span, "rack", target.rack, config.nodeTags.rack)
   }
 
 }

@@ -50,7 +50,6 @@ object QueryExecutionAdvice {
     val clientSpan = Kamon.currentSpan()
     val executionSpan = Kamon.spanBuilder(operationName).asChildOf(clientSpan).start()
 
-    metrics.tagSpanMetrics(executionSpan)
     metrics.tagSpan(executionSpan)
 
     val executionContext = execution.context

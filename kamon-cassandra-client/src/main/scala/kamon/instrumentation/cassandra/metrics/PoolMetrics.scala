@@ -29,7 +29,8 @@ object PoolMetrics {
     description = "Number of in-flight request towards this host measured at the moment a new query is issued"
   )
 
-  class PoolInstruments(node: TargetNode) extends InstrumentGroup(Cassandra.targetTags(node)) {
+  class PoolInstruments(node: TargetNode) extends InstrumentGroup(Cassandra.targetMetricTags(node)) {
+    //TODO filter ones that satisfy metric
     val borrow: Histogram                 = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)
     val trashedConnections: Counter       = register(TrashedConnections)

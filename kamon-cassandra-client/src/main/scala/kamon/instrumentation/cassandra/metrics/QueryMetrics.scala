@@ -16,12 +16,13 @@ object QueryMetrics {
 
   def forHost(host: Host): QueryMetrics = new QueryMetrics(Cassandra.targetFromHost(host))
 }
-
-class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(Cassandra.targetTags(targetNode)) {
+                                                                    //TODO filter these out to be only metricTags
+class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(Cassandra.targetMetricTags(targetNode)) {
   import QueryMetrics._
 
-  def tagSpanMetrics(span: Span): Span = span.tagMetrics(commonTags)
-  def tagSpan(span: Span): Span = span.tag(commonTags)
+  def tagSpan(span: Span): Unit = {
+    Cassandra.tagSpanWithTarget(targetNode, span)
+  }
 
   val errors: Counter   = register(Errors)
   val timeouts: Counter = register(Timeouts)
