@@ -4,7 +4,7 @@ import com.datastax.driver.core.Host
 import kamon.Kamon
 import kamon.instrumentation.cassandra.Cassandra
 import kamon.instrumentation.cassandra.Cassandra.TargetNode
-import kamon.metric.Counter
+import kamon.metric.{Counter, InstrumentGroup}
 import kamon.trace.Span
 
 object QueryMetrics {
@@ -17,15 +17,14 @@ object QueryMetrics {
   def forHost(host: Host): QueryMetrics = new QueryMetrics(Cassandra.targetFromHost(host))
 }
 
-class QueryMetrics(targetNode: TargetNode) {
+class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(Cassandra.targetTags(targetNode)) {
   import QueryMetrics._
-  private val targetTags = Cassandra.targetTags(targetNode)
 
-  def tagSpanMetrics(span: Span): Span = span.tagMetrics(targetTags)
-  def tagSpan(span: Span): Span = span.tag(targetTags)
+  def tagSpanMetrics(span: Span): Span = span.tagMetrics(commonTags)
+  def tagSpan(span: Span): Span = span.tag(commonTags)
 
-  val errors: Counter   = Errors.withTags(targetTags)
-  val timeouts: Counter = Timeouts.withTags(targetTags)
+  val errors: Counter   = register(Errors)
+  val timeouts: Counter = register(Timeouts)
 
   /*Here it would be more valuable to tag with host that's being retried or speculated on than
   * one defined by a policy so we are dropping it altogether */

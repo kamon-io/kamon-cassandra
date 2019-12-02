@@ -18,6 +18,7 @@ package kamon.instrumentation.instrumentation
 import com.datastax.driver.core.Session
 import kamon.Kamon
 import kamon.instrumentation.cassandra.Cassandra.TargetNode
+import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
 import kamon.instrumentation.cassandra.metrics.{PoolMetrics, QueryMetrics}
 import kamon.instrumentation.executor.ExecutorMetrics
 import kamon.tag.TagSet
@@ -41,7 +42,7 @@ class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Event
       }
 
       val node = TargetNode("127.0.0.1", "datacenter1", "rack1")
-      val poolMetrics = new PoolMetrics(node)
+      val poolMetrics = new PoolInstruments(node)
       val queryMetrics = new QueryMetrics(node)
 
       eventually(timeout(3 seconds)) {

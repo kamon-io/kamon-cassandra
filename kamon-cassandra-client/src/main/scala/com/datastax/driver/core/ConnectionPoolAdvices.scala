@@ -6,13 +6,14 @@ import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
 import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, PoolMetrics}
 import kamon.instrumentation.cassandra.Cassandra
+import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 
 object PoolConstructorAdvice {
   @Advice.OnMethodExit
   def onConstructed(@Advice.This poolWithMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
-    poolWithMetrics.setMetrics(new PoolMetrics(Cassandra.targetFromHost(host)))
+    poolWithMetrics.setMetrics(new PoolInstruments(Cassandra.targetFromHost(host)))
   }
 }
 

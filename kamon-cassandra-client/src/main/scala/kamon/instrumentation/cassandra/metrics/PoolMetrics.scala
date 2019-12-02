@@ -4,6 +4,7 @@ import kamon.Kamon
 import kamon.instrumentation.cassandra.Cassandra
 import kamon.instrumentation.cassandra.Cassandra.TargetNode
 import kamon.metric._
+import kamon.tag.TagSet
 
 object PoolMetrics {
   val PoolBorrowTime        = Kamon.histogram(
@@ -27,16 +28,14 @@ object PoolMetrics {
     "cassandra.client.inflight-per-target",
     "Number of in-flight request towards this host measured at the moment a new query is issued"
   )
+  
+  class PoolInstruments(node: TargetNode) extends InstrumentGroup(Cassandra.targetTags(node)) {
+    val borrow: Histogram                 = register(PoolBorrowTime)
+    val size: RangeSampler                = register(ConnectionPoolSize)
+    val trashedConnections: Counter       = register(TrashedConnections)
+    val inflightPerConnection: Histogram  = register(InFlightPerConnection)
+    val inflightPerHost: Histogram        = register(InFlightPerTarget)
+  }
 }
 
-class PoolMetrics(node: TargetNode) {
-  import PoolMetrics._
 
-  val targetTags = Cassandra.targetTags(node)
-
-  val borrow: Histogram                 = PoolBorrowTime.withTags(targetTags)
-  val size: RangeSampler                = ConnectionPoolSize.withTags(targetTags)
-  val trashedConnections: Counter       = TrashedConnections.withTags(targetTags)
-  val inflightPerConnection: Histogram  = InFlightPerConnection.withTags(targetTags)
-  val inflightPerHost: Histogram        = InFlightPerTarget.withTags(targetTags)
-}
