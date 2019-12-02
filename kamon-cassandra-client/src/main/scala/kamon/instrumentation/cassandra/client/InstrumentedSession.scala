@@ -23,27 +23,28 @@ import com.google.common.base.Function
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import kamon.Kamon
 import kamon.trace.Span
+import scala.collection.JavaConverters._
 
 import scala.util.{Failure, Success, Try}
 
-object KamonSession {
+object InstrumentedSession {
   val DmlStatementPrefixes = Set("select", "insert", "update", "delete")
 }
 
-class KamonSession(underlying: Session) extends AbstractSession {
-  import KamonSession._
+class InstrumentedSession(underlying: Session) extends AbstractSession {
+  import InstrumentedSession._
 
   override def getLoggedKeyspace: String =
     underlying.getLoggedKeyspace
 
   override def init(): Session =
-    new KamonSession(underlying.init())
+    new InstrumentedSession(underlying.init())
 
 
   override def initAsync(): ListenableFuture[Session] = {
     Futures.transform(underlying.initAsync(), new Function[Session, Session] {
       override def apply(session: Session): Session =
-        new KamonSession(session)
+        new InstrumentedSession(session)
     })
   }
 
@@ -143,8 +144,13 @@ class KamonSession(underlying: Session) extends AbstractSession {
 
 
   def getQuery(statement: Statement): String = statement match {
-    case b: BoundStatement => b.preparedStatement.getQueryString
-    case r: RegularStatement => r.getQueryString
+    case b: BoundStatement =>
+      b.preparedStatement.getQueryString
+    case r: RegularStatement =>
+      r.getQueryString
+    case batchStatement: BatchStatement =>
+      batchStatement.getStatements.asScala.map(getQuery).mkString(",")
+    case _ => "unsupported-statement-type"
   }
 
 }

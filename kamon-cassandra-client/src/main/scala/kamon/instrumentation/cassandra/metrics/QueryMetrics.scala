@@ -6,7 +6,7 @@ import kamon.instrumentation.cassandra.Cassandra
 import kamon.instrumentation.cassandra.Cassandra.TargetNode
 import kamon.metric.Counter
 import kamon.trace.Span
-//TODO descriptions
+
 object QueryMetrics {
   val Errors                = Kamon.counter("cassandra.query.errors", "Count of executions that resulted in error")
   val Timeouts              = Kamon.counter("cassandra.query.timeouts", "Count of executions that timed-out")
