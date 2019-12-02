@@ -135,9 +135,10 @@ object OnExceptionAdvice {
     metrics.errors.increment()
 
     val executionSpan = execution.context.get(Span.Key)
-    executionSpan.fail(exception)
-    executionSpan.finish()
-    executionSpan.trackMetrics()
+
+    executionSpan
+      .fail(exception)
+      .finish()
   }
 }
 
@@ -151,7 +152,9 @@ object OnTimeoutAdvice {
     metrics.timeouts.increment()
 
     val executionSpan = execution.context.get(Span.Key)
-    executionSpan.fail("timeout")
-    executionSpan.finish()
+
+    executionSpan
+      .fail("timeout")
+      .finish()
   }
 }
