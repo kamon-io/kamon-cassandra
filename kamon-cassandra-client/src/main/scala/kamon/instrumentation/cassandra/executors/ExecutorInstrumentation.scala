@@ -21,7 +21,7 @@ class DriverExecutorInstrumentation extends InstrumentationBuilder {
 trait ExecutorMetrics {
 
   def metricName(executorName: String) = "cassandra.client.executor." + executorName
-  val componentTags = TagSet.of("component", "cassandra-client")
+  val componentTags = TagSet.of("component", "cassandra.client")
 
   def instrument(callable: Callable[ExecutorService], name: String): ExecutorService =
     ExecutorInstrumentation.instrument(
