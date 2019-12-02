@@ -8,27 +8,27 @@ import kamon.tag.TagSet
 
 object PoolMetrics {
   val PoolBorrowTime        = Kamon.histogram(
-    "cassandra.client.pool.borrow-time",
-    "Time spent acquiring connection from the pool",
-    MeasurementUnit.time.nanoseconds
+    name = "cassandra.client.pool.borrow-time",
+    description = "Time spent acquiring connection from the pool",
+    unit = MeasurementUnit.time.nanoseconds
   )
   val ConnectionPoolSize    = Kamon.rangeSampler(
-    "cassandra.client.pool.size",
-    "Connection pool size for this host"
+    name = "cassandra.client.pool.size",
+    description = "Connection pool size for this host"
   )
   val TrashedConnections    = Kamon.counter(
-    "cassandra.client.pool.trashed",
-    "Number of trashed connections for this host"
+    name = "cassandra.client.pool.trashed",
+    description = "Number of trashed connections for this host"
   )
   val InFlightPerConnection = Kamon.histogram(
-    "cassandra.client.pool.inflight-per-connection",
-    "Number of in-flight request on this connection measured at the moment a new query is issued"
+    name = "cassandra.client.pool.inflight-per-connection",
+    description = "Number of in-flight request on this connection measured at the moment a new query is issued"
   )
   val InFlightPerTarget     = Kamon.histogram(
-    "cassandra.client.inflight-per-target",
-    "Number of in-flight request towards this host measured at the moment a new query is issued"
+    name = "cassandra.client.inflight-per-target",
+    description = "Number of in-flight request towards this host measured at the moment a new query is issued"
   )
-  
+
   class PoolInstruments(node: TargetNode) extends InstrumentGroup(Cassandra.targetTags(node)) {
     val borrow: Histogram                 = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)
