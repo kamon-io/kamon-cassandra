@@ -44,9 +44,9 @@ object Cassandra {
 
   def targetMetricTags(target: TargetNode): TagSet = {
     val metricEnabledTags = Seq(
-      ("target", target.address, config.nodeTags.node),
-      ("dc", target.dc, config.nodeTags.dc),
-      ("rack", target.rack, config.nodeTags.rack)
+      ("cassandra.target", target.address, config.nodeTags.node),
+      ("cassandra.dc", target.dc, config.nodeTags.dc),
+      ("cassandra.rack", target.rack, config.nodeTags.rack)
     )
       .filter(_._3 == TagMode.Metric)
       .map { case (tag, value, _) => tag -> value }
@@ -56,9 +56,9 @@ object Cassandra {
   }
 
   def tagSpanWithTarget(target: TargetNode, span: Span): Unit = {
-    SpanTagger.tag(span, "target", target.address, config.nodeTags.node)
-    SpanTagger.tag(span, "dc", target.dc, config.nodeTags.dc)
-    SpanTagger.tag(span, "rack", target.rack, config.nodeTags.rack)
+    SpanTagger.tag(span, "cassandra.target", target.address, config.nodeTags.node)
+    SpanTagger.tag(span, "cassandra.dc", target.dc, config.nodeTags.dc)
+    SpanTagger.tag(span, "cassandra.rack", target.rack, config.nodeTags.rack)
   }
 
 }
