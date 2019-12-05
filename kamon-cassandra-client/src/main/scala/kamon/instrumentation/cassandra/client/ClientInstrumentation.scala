@@ -42,8 +42,7 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(isConstructor, PoolConstructorAdvice)
     .advise(method("initAsync"), InitPoolAdvice)
     .mixin(classOf[PoolWithMetrics])
-//TODO tripple check decrement points (whatabout dropping entire pool?)
-  
+
   /*Trace each query sub-execution as a child of client query,
   * this includes retries, speculative executions and fetchMore executions.
   * Once response is ready (onSet), context is carried via Message.Response mixin

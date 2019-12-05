@@ -34,7 +34,6 @@ object PoolMetrics {
   )
 
   class PoolInstruments(node: TargetNode) extends InstrumentGroup(Cassandra.targetMetricTags(node)) {
-    //TODO filter ones that satisfy metric
     val borrow: Histogram                 = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)
     val globalSize: RangeSampler          = ConnectionPoolGlobalSize.withoutTags()

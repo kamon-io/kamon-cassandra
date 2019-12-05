@@ -16,7 +16,6 @@ object QueryMetrics {
 
   def forHost(host: Host): QueryMetrics = new QueryMetrics(Cassandra.targetFromHost(host))
 }
-                                                                    //TODO filter these out to be only metricTags
 class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(Cassandra.targetMetricTags(targetNode)) {
   import QueryMetrics._
 
