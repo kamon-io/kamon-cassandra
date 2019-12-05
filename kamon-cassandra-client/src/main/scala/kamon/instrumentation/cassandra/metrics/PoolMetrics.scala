@@ -16,6 +16,10 @@ object PoolMetrics {
     name = "cassandra.client.pool.size",
     description = "Connection pool size for this host"
   )
+  val ConnectionPoolGlobalSize    = Kamon.rangeSampler(
+    name = "cassandra.client.pool.size",
+    description = "Total number of connections across all target nodes"
+  )
   val TrashedConnections    = Kamon.counter(
     name = "cassandra.client.pool.trashed",
     description = "Number of trashed connections for this host"
@@ -33,6 +37,7 @@ object PoolMetrics {
     //TODO filter ones that satisfy metric
     val borrow: Histogram                 = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)
+    val globalSize: RangeSampler          = ConnectionPoolGlobalSize.withoutTags()
     val trashedConnections: Counter       = register(TrashedConnections)
     val inflightPerConnection: Histogram  = register(InFlightPerConnection)
     val inflightPerHost: Histogram        = register(InFlightPerTarget)
