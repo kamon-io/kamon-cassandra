@@ -9,28 +9,26 @@ import kamon.instrumentation.trace.SpanTagger.TagMode
 import kamon.tag.TagSet
 import kamon.trace.Span
 
-object Cassandra {
+object CassandraInstrumentation {
 
   case class TargetNode(address: String, dc: String, rack: String)
-  case class NodeTags(node: TagMode, rack: TagMode, dc: TagMode)
-  case class ClientInstrumentationConfig(nodeTags: NodeTags)
+  case class NodeTags()
+  case class Settings(node: TagMode, rack: TagMode, dc: TagMode)
 
-  @volatile var config: ClientInstrumentationConfig = loadConfig(Kamon.config())
+  @volatile var settings: Settings = loadConfig(Kamon.config())
 
   private val UnknownTargetTagValue = "unknown"
 
 
-  def loadConfig(config: Config) = ClientInstrumentationConfig(
-    NodeTags(
-      node = TagMode.from(config.getString("kamon.cassandra.tracing.tag.node")),
-      rack = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
-      dc   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
-    )
+  def loadConfig(config: Config) = Settings(
+    node = TagMode.from(config.getString("kamon.cassandra.tracing.tag.node")),
+    rack = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
+    dc   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
   )
 
   Kamon.onReconfigure(new OnReconfigureHook {
     override def onReconfigure(newConfig: Config): Unit =
-      config = loadConfig(newConfig)
+      settings = loadConfig(newConfig)
   })
 
   def targetFromHost(host: Host): TargetNode = {
@@ -44,9 +42,9 @@ object Cassandra {
 
   def targetMetricTags(target: TargetNode): TagSet = {
     val metricEnabledTags = Seq(
-      ("cassandra.target", target.address, config.nodeTags.node),
-      ("cassandra.dc", target.dc, config.nodeTags.dc),
-      ("cassandra.rack", target.rack, config.nodeTags.rack)
+      ("cassandra.target", target.address, settings.node),
+      ("cassandra.dc", target.dc, settings.dc),
+      ("cassandra.rack", target.rack, settings.rack)
     )
       .filter(_._3 == TagMode.Metric)
       .map { case (tag, value, _) => tag -> value }
@@ -56,9 +54,9 @@ object Cassandra {
   }
 
   def tagSpanWithTarget(target: TargetNode, span: Span): Unit = {
-    SpanTagger.tag(span, "cassandra.target", target.address, config.nodeTags.node)
-    SpanTagger.tag(span, "cassandra.dc", target.dc, config.nodeTags.dc)
-    SpanTagger.tag(span, "cassandra.rack", target.rack, config.nodeTags.rack)
+    SpanTagger.tag(span, "cassandra.target", target.address, settings.node)
+    SpanTagger.tag(span, "cassandra.dc", target.dc, settings.dc)
+    SpanTagger.tag(span, "cassandra.rack", target.rack, settings.rack)
   }
 
 }

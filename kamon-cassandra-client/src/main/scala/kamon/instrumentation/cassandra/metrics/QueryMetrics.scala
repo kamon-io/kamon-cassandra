@@ -2,8 +2,8 @@ package kamon.instrumentation.cassandra.metrics
 
 import com.datastax.driver.core.Host
 import kamon.Kamon
-import kamon.instrumentation.cassandra.Cassandra
-import kamon.instrumentation.cassandra.Cassandra.TargetNode
+import kamon.instrumentation.cassandra.CassandraInstrumentation
+import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
 import kamon.metric.{Counter, InstrumentGroup}
 import kamon.trace.Span
 
@@ -14,13 +14,13 @@ object QueryMetrics {
   val SpeculativeExecutions = Kamon.counter(name = "cassandra.query.speculative", description = "Count of executions that were triggered by speculative execution strategy")
   val CanceledExecutions    = Kamon.counter(name = "cassandra.query.cancelled", description = "Count of executions that were cancelled mid-flight")
 
-  def forHost(host: Host): QueryMetrics = new QueryMetrics(Cassandra.targetFromHost(host))
+  def forHost(host: Host): QueryMetrics = new QueryMetrics(CassandraInstrumentation.targetFromHost(host))
 }
-class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(Cassandra.targetMetricTags(targetNode)) {
+class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(targetNode)) {
   import QueryMetrics._
 
   def tagSpan(span: Span): Unit = {
-    Cassandra.tagSpanWithTarget(targetNode, span)
+    CassandraInstrumentation.tagSpanWithTarget(targetNode, span)
   }
 
   val errors: Counter   = register(Errors)

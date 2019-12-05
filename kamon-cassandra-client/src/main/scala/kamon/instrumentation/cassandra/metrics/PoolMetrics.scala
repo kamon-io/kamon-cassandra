@@ -1,8 +1,8 @@
 package kamon.instrumentation.cassandra.metrics
 
 import kamon.Kamon
-import kamon.instrumentation.cassandra.Cassandra
-import kamon.instrumentation.cassandra.Cassandra.TargetNode
+import kamon.instrumentation.cassandra.CassandraInstrumentation
+import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
 import kamon.metric._
 import kamon.tag.TagSet
 
@@ -33,7 +33,7 @@ object PoolMetrics {
     description = "Number of in-flight request towards this host measured at the moment a new query is issued"
   )
 
-  class PoolInstruments(node: TargetNode) extends InstrumentGroup(Cassandra.targetMetricTags(node)) {
+  class PoolInstruments(node: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(node)) {
     val borrow: Histogram                 = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)
     val globalSize: RangeSampler          = ConnectionPoolGlobalSize.withoutTags()

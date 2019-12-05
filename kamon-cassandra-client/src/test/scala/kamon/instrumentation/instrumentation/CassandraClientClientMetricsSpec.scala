@@ -17,7 +17,7 @@ package kamon.instrumentation.instrumentation
 
 import com.datastax.driver.core.Session
 import kamon.Kamon
-import kamon.instrumentation.cassandra.Cassandra.TargetNode
+import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
 import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
 import kamon.instrumentation.cassandra.metrics.{PoolMetrics, QueryMetrics}
 import kamon.instrumentation.executor.ExecutorMetrics
