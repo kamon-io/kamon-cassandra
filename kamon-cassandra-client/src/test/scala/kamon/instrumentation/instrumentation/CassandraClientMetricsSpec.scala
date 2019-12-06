@@ -30,7 +30,7 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, WordSpec}
 
 import scala.util.Try
 
-class CassandraClientClientMetricsSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
+class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
   with MetricInspection.Syntax with InstrumentInspection.Syntax with OptionValues {
 
 
