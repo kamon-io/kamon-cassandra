@@ -25,11 +25,11 @@ object PoolMetrics {
     description = "Number of trashed connections for this host"
   )
   val InFlightPerConnection = Kamon.histogram(
-    name = "cassandra.client.pool.inflight-per-connection",
+    name = "cassandra.client.pool.connection.in-flight",
     description = "Number of in-flight request on this connection measured at the moment a new query is issued"
   )
   val InFlightPerTarget     = Kamon.histogram(
-    name = "cassandra.client.inflight-per-target",
+    name = "cassandra.client.pool.target.in-flight",
     description = "Number of in-flight request towards this host measured at the moment a new query is issued"
   )
 

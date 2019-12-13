@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import com.datastax.driver.core.Message.Response
 import com.datastax.driver.core.RequestHandler.QueryState
-import kamon.{Kamon, trace}
+import kamon.Kamon
 import kamon.context.Context
 import kamon.context.Storage.Scope
 import kamon.instrumentation.cassandra.metrics.{HasQueryMetrics, QueryMetrics}
@@ -19,17 +19,7 @@ object QueryOperations {
   val SpeculativeExecutionOperationName = ExecutionOperationName + ".speculative"
 }
 
-object HostConstructor {
-  @Advice.OnMethodExit
-  def onHostCreated(@Advice.This host: Host with HasQueryMetrics): Unit = {
-    host.setMetrics(
-      QueryMetrics.forHost(host)
-    )
-  }
-}
-
 object QueryExecutionAdvice {
-
   import QueryOperations._
 
   val ParentSpanKey = Context.key[Span]("__parent-span", Span.Empty)
@@ -70,7 +60,7 @@ object OnResultSetConstruction {
   @Advice.OnMethodExit
   def onCreateResultSet(
                          @Advice.Return rs: ArrayBackedResultSet,
-                         @Advice.Argument(0) msg: Responses.Result with HasContext,
+                         @Advice.Argument(0) msg: Responses.Result with HasContext
                        ): Unit = if (rs.isInstanceOf[HasContext]) {
     rs.asInstanceOf[HasContext].setContext(msg.context)
   }
@@ -83,7 +73,6 @@ object OnFetchMore {
     val clientSpan = hasContext.context.get(QueryExecutionAdvice.ParentSpanKey)
     Kamon.storeContext(Context.of(Span.Key, clientSpan))
   }
-
   @Advice.OnMethodExit
   def onFetched(@Advice.Enter scope: Scope): Unit = {
     scope.close()
@@ -93,14 +82,13 @@ object OnFetchMore {
 object QueryWriteAdvice {
   @Advice.OnMethodEnter
   def onStartWriting(@Advice.This execution: HasContext): Unit = {
-    val executionSpan = execution.context.get(Span.Key)
-    executionSpan.mark("cassandra.connection.write-started")
+    execution.context.get(Span.Key)
+      .mark("cassandra.connection.write-started")
   }
 }
 
 //Server timeouts and exceptions
 object OnSetAdvice {
-
   import QueryOperations._
 
   @Advice.OnMethodEnter
@@ -129,13 +117,9 @@ object OnExceptionAdvice {
                   @Advice.Argument(0) connection: Connection,
                   @Advice.Argument(1) exception: Exception,
                   @Advice.FieldValue("current") currentHost: Host with HasQueryMetrics): Unit = {
+    currentHost.getMetrics.errors.increment()
 
-    val metrics = currentHost.getMetrics
-    metrics.errors.increment()
-
-    val executionSpan = execution.context.get(Span.Key)
-
-    executionSpan
+    execution.context.get(Span.Key)
       .fail(exception)
       .finish()
   }
@@ -147,13 +131,20 @@ object OnTimeoutAdvice {
   def onTimeout(@Advice.This execution: HasContext,
                 @Advice.Argument(0) connection: Connection,
                 @Advice.FieldValue("current") currentHost: Host with HasQueryMetrics): Unit = {
-    val metrics = currentHost.getMetrics
-    metrics.timeouts.increment()
+    currentHost.getMetrics.timeouts.increment()
 
-    val executionSpan = execution.context.get(Span.Key)
-
-    executionSpan
+    execution.context.get(Span.Key)
       .fail("timeout")
       .finish()
+  }
+}
+
+
+object HostLocationAdvice {
+  @Advice.OnMethodExit
+  def onHostLocationUpdate(@Advice.This host: Host with HasQueryMetrics): Unit = {
+    host.setMetrics(
+      QueryMetrics.forHost(host)
+    )
   }
 }

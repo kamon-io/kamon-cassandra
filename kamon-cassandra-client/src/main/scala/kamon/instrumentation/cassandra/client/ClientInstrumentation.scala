@@ -73,7 +73,7 @@ class ClientInstrumentation extends InstrumentationBuilder {
   * so all query metrics are mixed into a Host object*/
   onType("com.datastax.driver.core.Host")
     .mixin(classOf[PoolWithQueryMetrics])
-    .advise(isConstructor, HostConstructor)
+    .advise(method("setLocationInfo"), HostLocationAdvice)
 
 
 

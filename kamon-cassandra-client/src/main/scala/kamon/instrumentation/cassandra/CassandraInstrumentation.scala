@@ -12,18 +12,16 @@ import kamon.trace.Span
 object CassandraInstrumentation {
 
   case class TargetNode(address: String, dc: String, rack: String)
-  case class NodeTags()
   case class Settings(node: TagMode, rack: TagMode, dc: TagMode)
 
   @volatile var settings: Settings = loadConfig(Kamon.config())
 
   private val UnknownTargetTagValue = "unknown"
 
-
   def loadConfig(config: Config) = Settings(
     node = TagMode.from(config.getString("kamon.cassandra.tracing.tag.node")),
     rack = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
-    dc   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
+    dc   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc"))
   )
 
   Kamon.onReconfigure(new OnReconfigureHook {

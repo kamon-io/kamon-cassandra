@@ -16,6 +16,7 @@ object QueryMetrics {
 
   def forHost(host: Host): QueryMetrics = new QueryMetrics(CassandraInstrumentation.targetFromHost(host))
 }
+
 class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(targetNode)) {
   import QueryMetrics._
 

@@ -49,13 +49,13 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
     - `target`
 
 
-####`cassandra.client.inflight-per-connection`
-- Distribution of in-flight requests over connections, recorded when connections is borrowed from pool
+####`cassandra.client.pool.connection.in-flight`
+- Distribution of in-flight requests on this connection measured at the moment a new query is issued
 - Histogram
 
 
-####`cassandra.client.inflight-per-target`
-- Distribution of in-flight requests over cluster nodes
+####`cassandra.client.pool.target.in-flight`
+- Distribution of of in-flight request towards over hosts measured at the moment a new query is issued
 - Histogram
 
 
