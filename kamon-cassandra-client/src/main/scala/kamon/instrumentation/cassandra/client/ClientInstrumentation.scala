@@ -16,11 +16,22 @@
 
 package kamon.instrumentation.cassandra.client
 
+import java.util.UUID
+
 import com.datastax.driver.core._
-import kamon.instrumentation.cassandra.metrics.{PoolWithQueryMetrics, PoolWithMetrics}
+import kamon.instrumentation.cassandra.client.ClientInstrumentation.ClusterManagerBridge
+import kamon.instrumentation.cassandra.metrics.{PoolWithMetrics, PoolWithQueryMetrics}
 import kamon.instrumentation.context.HasContext.MixinWithInitializer
 import kanela.agent.api.instrumentation.InstrumentationBuilder
+import kanela.agent.api.instrumentation.bridge.FieldBridge
 
+
+object ClientInstrumentation {
+  trait ClusterManagerBridge {
+    @FieldBridge("clusterName")
+    def getClusterName: String
+  }
+}
 
 class ClientInstrumentation extends InstrumentationBuilder {
 
@@ -29,6 +40,7 @@ class ClientInstrumentation extends InstrumentationBuilder {
   /*Wapps client session with traced Kamon one*/
   onType("com.datastax.driver.core.Cluster$Manager")
     .intercept(method("newSession"), SessionInterceptor)
+    .bridge(classOf[ClusterManagerBridge])
 
   /*Instrument  connection pools (one per target host)
   * Pool size is incremented on pool init and when new connections are added
@@ -75,8 +87,5 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .mixin(classOf[PoolWithQueryMetrics])
     .advise(method("setLocationInfo"), HostLocationAdvice)
 
-
-
-
-
 }
+

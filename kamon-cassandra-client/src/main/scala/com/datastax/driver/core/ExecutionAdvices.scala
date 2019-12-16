@@ -7,6 +7,7 @@ import com.datastax.driver.core.RequestHandler.QueryState
 import kamon.Kamon
 import kamon.context.Context
 import kamon.context.Storage.Scope
+import kamon.instrumentation.cassandra.client.ClientInstrumentation.ClusterManagerBridge
 import kamon.instrumentation.cassandra.metrics.{HasQueryMetrics, QueryMetrics}
 import kamon.instrumentation.context.HasContext
 import kamon.trace.Span
@@ -79,6 +80,7 @@ object OnFetchMore {
   }
 }
 
+
 object QueryWriteAdvice {
   @Advice.OnMethodEnter
   def onStartWriting(@Advice.This execution: HasContext): Unit = {
@@ -104,7 +106,7 @@ object OnSetAdvice {
       currentHost.getMetrics.retries.increment()
     }
     if (response.`type` == Response.Type.ERROR) executionSpan.fail(response.`type`.name())
-    //In order to correlate paging requests with initial one, carry context with message
+    //In 7   order to correlate paging requests with initial one, carry context with message
     response.asInstanceOf[HasContext].setContext(execution.context)
     executionSpan.finish()
   }
@@ -142,9 +144,10 @@ object OnTimeoutAdvice {
 
 object HostLocationAdvice {
   @Advice.OnMethodExit
-  def onHostLocationUpdate(@Advice.This host: Host with HasQueryMetrics): Unit = {
+  def onHostLocationUpdate(@Advice.This host: Host with HasQueryMetrics,
+                          @Advice.FieldValue("manager") clusterManager: Any): Unit = {
     host.setMetrics(
-      QueryMetrics.forHost(host)
+      QueryMetrics.instrumentsForHost(host, clusterManager.asInstanceOf[ClusterManagerBridge].getClusterName)
     )
   }
 }

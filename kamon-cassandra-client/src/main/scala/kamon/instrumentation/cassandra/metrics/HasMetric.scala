@@ -1,6 +1,7 @@
 package kamon.instrumentation.cassandra.metrics
 
 import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
+import kamon.instrumentation.cassandra.metrics.QueryMetrics.QueryInstruments
 
 trait HasPoolMetrics {
   def setMetrics(metrics: PoolInstruments): Unit
@@ -16,12 +17,12 @@ class PoolWithMetrics extends HasPoolMetrics {
 
 
 trait HasQueryMetrics {
-  def setMetrics(metrics: QueryMetrics): Unit
-  def getMetrics: QueryMetrics
+  def setMetrics(metrics: QueryInstruments): Unit
+  def getMetrics: QueryInstruments
 }
 
 class PoolWithQueryMetrics extends HasQueryMetrics {
-  private var _metrics: QueryMetrics = _
-  override def setMetrics(metrics: QueryMetrics): Unit = _metrics = metrics
-  override def getMetrics: QueryMetrics = _metrics
+  private var _metrics: QueryInstruments = _
+  override def setMetrics(metrics: QueryInstruments): Unit = _metrics = metrics
+  override def getMetrics: QueryInstruments = _metrics
 }

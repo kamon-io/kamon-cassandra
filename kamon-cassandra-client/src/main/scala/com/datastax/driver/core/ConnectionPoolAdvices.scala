@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, PoolMetrics}
+import kamon.instrumentation.cassandra.metrics.HasPoolMetrics
 import kamon.instrumentation.cassandra.CassandraInstrumentation
 import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
 import kanela.agent.libs.net.bytebuddy.asm.Advice
@@ -12,8 +12,10 @@ import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 object PoolConstructorAdvice {
   @Advice.OnMethodExit
-  def onConstructed(@Advice.This poolWithMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
-    poolWithMetrics.setMetrics(new PoolInstruments(CassandraInstrumentation.targetFromHost(host)))
+  def onConstructed(@Advice.This poolWithMetrics: HostConnectionPool with HasPoolMetrics,
+                    @Advice.FieldValue("host") host: Host): Unit = {
+    val clusterName = poolWithMetrics.manager.getCluster.getClusterName
+    poolWithMetrics.setMetrics(new PoolInstruments(CassandraInstrumentation.targetFromHost(host, clusterName)))
   }
 }
 

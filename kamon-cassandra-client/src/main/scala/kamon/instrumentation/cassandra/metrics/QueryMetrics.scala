@@ -14,24 +14,23 @@ object QueryMetrics {
   val SpeculativeExecutions = Kamon.counter(name = "cassandra.query.speculative", description = "Count of executions that were triggered by speculative execution strategy")
   val CanceledExecutions    = Kamon.counter(name = "cassandra.query.cancelled", description = "Count of executions that were cancelled mid-flight")
 
-  def forHost(host: Host): QueryMetrics = new QueryMetrics(CassandraInstrumentation.targetFromHost(host))
-}
+  def instrumentsForHost(host: Host, clusterName: String): QueryInstruments = new QueryInstruments(CassandraInstrumentation.targetFromHost(host, clusterName))
 
-class QueryMetrics(targetNode: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(targetNode)) {
-  import QueryMetrics._
+  class QueryInstruments(targetNode: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(targetNode)) {
 
-  def tagSpan(span: Span): Unit = {
-    CassandraInstrumentation.tagSpanWithTarget(targetNode, span)
+    def tagSpan(span: Span): Unit = {
+      CassandraInstrumentation.tagSpanWithTarget(targetNode, span)
+    }
+
+    val errors: Counter   = register(Errors)
+    val timeouts: Counter = register(Timeouts)
+
+    /*Here it would be more valuable to tag with host that's being retried or speculated on than
+    * one defined by a policy so we are dropping it altogether */
+    val retries: Counter                = RetriedExecutions.withoutTags()
+    val speculative: Counter            = SpeculativeExecutions.withoutTags()
+    val cancelled: Counter              = CanceledExecutions.withoutTags()
   }
-
-  val errors: Counter   = register(Errors)
-  val timeouts: Counter = register(Timeouts)
-
-  /*Here it would be more valuable to tag with host that's being retried or speculated on than
-  * one defined by a policy so we are dropping it altogether */
-  val retries: Counter                = RetriedExecutions.withoutTags()
-  val speculative: Counter            = SpeculativeExecutions.withoutTags()
-  val cancelled: Counter              = CanceledExecutions.withoutTags()
 }
 
 

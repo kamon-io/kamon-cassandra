@@ -33,20 +33,26 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
 
 
 ##Connection metrics
+
+`TargetTags` include (depending on the configuration) 
+    - `cassandra.target` execution target
+    - `cassandra.dc` target datacenter
+    - `cassandra.cluster` target cluster
+ 
 ####`cassandra.client.pool-borrow-time`
 - Time spent waiting for a connection for an execution
 - Histogram
-    - `target` connection target node
+    - `TargetTags`
 
 ####`cassandra.connection.pool.size`
 - Number of active connections per node
 - Histogram
-    - `target` -> node
+    - `TargetTags`
 
-####`cassandra.trashed-connections`
+####`cassandra.client.pool.trashed`
 - Number of thrashed connections per host
-- Histogram
-    - `target`
+- Counter
+    - `TargetTags`
 
 
 ####`cassandra.client.pool.connection.in-flight`
@@ -57,21 +63,26 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
 ####`cassandra.client.pool.target.in-flight`
 - Distribution of of in-flight request towards over hosts measured at the moment a new query is issued
 - Histogram
-
+    - `TargetTags`
 
 
 ##Query metrics
 
 
-####`cassandra.client.query.duration`
+####`span.processing-time` - `operation=cassandra.client.query` (not including retries, speculations, fetches..)
 - Histogram
 - User observed query duration, as measured from the moment query is `executeAsync` is invoked until first page of result set is ready
-    - `statement.kind` -> present only for DML statements `select` | `insert` | `update` | `delete`
+    - `cassandra.query.kind` -> present only for DML statements `select` | `insert` | `update` | `delete`
 
-####`cassandra.client.query.count`  //same data can be extracted from former histogram
-- Counter 
-- Counts total number of executed client queries (not including retries, speculations, fetches..)
-    - `statement.kind`
+####`span.processing-time` - `operation=cassandra.client.query.${execution-type}` 
+- Available execution types:
+    - prepare
+    - execution
+    - speculative
+- Histogram
+- Client observed target-execution duration
+    - `retry` - indicates execution is retry of a previously failed execution
+
 
 ####`cassandra.client.inflight`
 - Current number of of active queries
@@ -81,12 +92,12 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
 ####`cassandra.query.errors`
 - Counter 
 - Count total number of failed executions (not neccessarily failed entire query)
-    - `target` -> target node for execution
+    - `TargetTags`
 
 ####`cassandra.query.timeouts`
 - Counter 
 - Count total number of timed-out executions
-    - `target` -> target node for execution
+    - `TargetTags`
 
 ####`cassandra.query.retries`
 - Counter 
@@ -98,7 +109,7 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
 
 ####`cassandra.query.cancelled`
 - Counter 
-- Count cluster-wide totaln number of cancelled executions (including user hanging up or speculative execution getting cancelked)
+- Count cluster-wide total number of cancelled executions (including user hanging up or speculative execution getting cancelled)
 
 
 
