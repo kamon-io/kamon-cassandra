@@ -39,9 +39,9 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
     - `cassandra.dc` target datacenter
     - `cassandra.cluster` target cluster
  
-####`cassandra.client.pool-borrow-time`
+####`cassandra.client.pool.borrow-time`
 - Time spent waiting for a connection for an execution
-- Histogram
+- Timer
     - `TargetTags`
 
 ####`cassandra.connection.pool.size`
@@ -102,14 +102,17 @@ libraryDependencies += "io.kamon" %% "kamon-cassandra-client" % "2.0.0"
 ####`cassandra.query.retries`
 - Counter 
 - Count cluster-wide total number of retried exectutions
+    - `TargetTags`
 
 ####`cassandra.query.speculative`
 - Counter 
 - Count cluster-wide total number of speculative executions (only issued queries, not measuring whether speculative won or got canceled by original response arriving)
+    - `TargetTags`
 
 ####`cassandra.query.cancelled`
 - Counter 
 - Count cluster-wide total number of cancelled executions (including user hanging up or speculative execution getting cancelled)
+    - `TargetTags`
 
 
 
