@@ -7,6 +7,7 @@ import kamon.Kamon
 import kamon.instrumentation.cassandra.metrics.HasPoolMetrics
 import kamon.instrumentation.cassandra.CassandraInstrumentation
 import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
+import kamon.metric.Timer
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 
@@ -26,14 +27,14 @@ object PoolConstructorAdvice {
 object BorrowAdvice {
 
   @Advice.OnMethodEnter
-  def startBorrow: Long = {
-    Kamon.clock.nanos
+  def startBorrow(@Advice.This poolMetrics: HasPoolMetrics): Timer.Started = {
+    poolMetrics.getMetrics.borrow.start()
   }
 
   @Advice.OnMethodExit(suppress = classOf[Throwable])
   def onBorrowed(
                   @Advice.Return(readOnly = false) connection: ListenableFuture[Connection],
-                  @Advice.Enter time: Long,
+                  @Advice.Enter timer: Timer.Started,
                   @Advice.This poolMetrics: HasPoolMetrics,
                   @Advice.FieldValue("totalInFlight") totalInflight: AtomicInteger): Unit = {
 
@@ -41,10 +42,8 @@ object BorrowAdvice {
 
     GuavaCompatibility.INSTANCE.addCallback(connection, new FutureCallback[Connection]() {
 
-      private def duration(start: Long) = Kamon.clock.nanos - start
-
       override def onSuccess(borrowedConnection: Connection): Unit = {
-        metrics.borrow.record(duration(time))
+        timer.stop()
         metrics.inflightPerConnection.record(borrowedConnection.inFlight.get)
         metrics.inflightPerHost.record(totalInflight.get())
       }

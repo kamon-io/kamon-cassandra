@@ -7,10 +7,9 @@ import kamon.metric._
 import kamon.tag.TagSet
 
 object PoolMetrics {
-  val PoolBorrowTime        = Kamon.histogram(
+  val PoolBorrowTime        = Kamon.timer(
     name = "cassandra.client.pool.borrow-time",
-    description = "Time spent acquiring connection from the pool",
-    unit = MeasurementUnit.time.nanoseconds
+    description = "Time spent acquiring connection from the pool"
   )
   val ConnectionPoolSize    = Kamon.rangeSampler(
     name = "cassandra.client.pool.size",
@@ -34,7 +33,7 @@ object PoolMetrics {
   )
 
   class PoolInstruments(node: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(node)) {
-    val borrow: Histogram                 = register(PoolBorrowTime)
+    val borrow: Timer                 = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)
     val globalSize: RangeSampler          = ConnectionPoolGlobalSize.withoutTags()
     val trashedConnections: Counter       = register(TrashedConnections)
