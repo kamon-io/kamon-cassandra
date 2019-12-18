@@ -42,9 +42,9 @@ object QueryMetrics {
 
     /*Here it would be more valuable to tag with host that's being retried or speculated on than
     * one defined by a policy so we are dropping it altogether */
-    val retries: Counter = RetriedExecutions.withoutTags()
-    val speculative: Counter = SpeculativeExecutions.withoutTags()
-    val cancelled: Counter = CanceledExecutions.withoutTags()
+    val retries: Counter = register(RetriedExecutions)
+    val speculative: Counter = register(SpeculativeExecutions)
+    val cancelled: Counter = register(CanceledExecutions)
   }
 
 }
