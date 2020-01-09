@@ -6,36 +6,62 @@ import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
 import kamon.metric._
 
 object HostConnectionPoolMetrics {
-  private val sessionPrefix = "cassandra.client.session.host"
+  private val poolPrefix = "cassandra.client.session.host"
 
 
   val BorrowTime        = Kamon.timer(
-    name = sessionPrefix + "cassandra.client.pool.borrow-time",
+    name = poolPrefix + "borrow-time",
     description = "Time spent acquiring connection from the pool"
   )
-  val ConnectionPoolSize    = Kamon.rangeSampler(
-    name = sessionPrefix + "cassandra.client.pool.size",
+  val Size    = Kamon.rangeSampler(
+    name = poolPrefix + "size",
     description = "Connection pool size for this host"
   )
-  val ConnectionPoolGlobalSize    = Kamon.rangeSampler(
-    name = sessionPrefix + "cassandra.client.pool.size",
-    description = "Total number of connections across all target nodes"
-  )
-  val TrashedConnections    = Kamon.counter(
-    name = sessionPrefix + "cassandra.client.pool.trashed",
+  val TrashedConnections    = Kamon.counter( //TODO not used, sad face
+    name = poolPrefix + "trashed",
     description = "Number of trashed connections for this host"
   )
   val InFlight = Kamon.histogram(
-    name = sessionPrefix + "cassandra.client.pool.connection.in-flight",
+    name = poolPrefix + "in-flight",
     description = "Number of in-flight request on this connection measured at the moment a new query is issued"
   )
 
+  val InFlightPerConnection = Kamon.histogram( //TODO not used, sad face
+    name = poolPrefix + "in-flight",
+    description = "Number of in-flight request on this connection measured at the moment a new query is issued"
+  )
+
+  val Errors = Kamon.counter(
+    name = poolPrefix + "errors",
+    description = "Number of client errors during ececution" //TODO should this include server errors
+  )
+
+  val Timeouts = Kamon.counter(
+    name = poolPrefix + "timeouts",
+    description = "Number of timed-out executions"
+  )
+
+  val Canceled = Kamon.counter(
+    name = poolPrefix + "canceled",
+    description = "Number of canceled executions"
+  )
+
+  val TriggeredSpeculations = Kamon.counter(
+    name = poolPrefix + "retries",
+    description = "Number of retried executions"
+  )
+
+  //TODO includes all target tags (dc, rack, cluster, ip) irregardles config, can only be enabled/disabled completely
   class HostConnectionPoolInstruments(node: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(node)) {
+    val trashed: Counter                  = register(TrashedConnections)
     val borrow: Timer                     = register(BorrowTime)
-    val size: RangeSampler                = register(ConnectionPoolSize)
-    val globalSize: RangeSampler          = ConnectionPoolGlobalSize.withoutTags()
-    val trashedConnections: Counter       = register(TrashedConnections)
-    val inflight: Histogram               = register(InFlight)
+    val size: RangeSampler                = register(Size)
+    val inFlight: Histogram               = register(InFlight)
+    //val inFlight: Histogram               = register(InFlight) //TODO per conn
+    val errors: Counter                   = register(Errors)
+    val timeouts: Counter                 = register(Timeouts)
+    val canceled: Counter                 = register(Canceled)
+    val triggeredSpeculations: Counter    = register(TriggeredSpeculations)
   }
 }
 

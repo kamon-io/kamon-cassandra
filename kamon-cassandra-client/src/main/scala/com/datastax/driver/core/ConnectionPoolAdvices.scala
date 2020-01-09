@@ -44,7 +44,7 @@ object BorrowAdvice {
 
       override def onSuccess(borrowedConnection: Connection): Unit = {
         timer.stop()
-        metrics.inflight.record(borrowedConnection.inFlight.get)
+        metrics.inFlight.record(borrowedConnection.inFlight.get)
       }
 
       override def onFailure(t: Throwable): Unit = ()
@@ -68,7 +68,6 @@ object InitPoolAdvice {
     done.addListener(new Runnable {
       override def run(): Unit = {
         hasPoolMetrics.getMetrics.size.increment(openConnections.get())
-        hasPoolMetrics.getMetrics.globalSize.increment(openConnections.get())
       }
     }, Kamon.scheduler())
   }
@@ -79,7 +78,6 @@ object CreateConnectionAdvice {
   def onConnectionCreated(@Advice.This hasPoolMetrics: HasPoolMetrics, @Advice.Return created: Boolean): Unit =
     if (created) {
       hasPoolMetrics.getMetrics.size.increment()
-      hasPoolMetrics.getMetrics.globalSize.increment()
     }
 }
 
@@ -87,9 +85,8 @@ object TrashConnectionAdvice {
   @Advice.OnMethodExit
   def onConnectionTrashed(@Advice.This hasPoolMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
     val metrics = hasPoolMetrics.getMetrics
-    metrics.trashedConnections.increment()
+    metrics.trashed.increment()
     metrics.size.decrement()
-    metrics.globalSize.decrement()
   }
 }
 
@@ -98,7 +95,6 @@ object ConnectionDefunctAdvice {
   @Advice.OnMethodExit
   def onConnectionDefunct(@Advice.This hasPoolMetrics: HasPoolMetrics): Unit = {
     hasPoolMetrics.getMetrics.size.decrement()
-    hasPoolMetrics.getMetrics.globalSize.decrement()
   }
 }
 

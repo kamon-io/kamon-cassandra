@@ -48,7 +48,7 @@ class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually 
       eventually(timeout(3 seconds)) {
         poolMetrics.borrow.distribution(false).max shouldBe >=(1L)
         poolMetrics.size.distribution(false).max should be > 0L
-        poolMetrics.inflight.distribution(false).max should be > 0L
+        poolMetrics.inFlight.distribution(false).max should be > 0L
 
         queryMetrics.errors.value(true) should equal(0)
         queryMetrics.timeouts.value(true) should equal(0)
