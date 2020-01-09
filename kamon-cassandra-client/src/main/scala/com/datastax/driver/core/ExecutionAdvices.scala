@@ -38,11 +38,11 @@ object QueryExecutionAdvice {
     val isSpeculative = position > 0
     if (isSpeculative) {
       metrics.speculativeExecution()
-      executionSpan.tag("cassandra.specluative", true)
+      executionSpan.tag("cassandra.speculative", true)
     }
     if (queryState.get().isCancelled) metrics.cancelation()
 
-    metrics.tagSpan(executionSpan) //TODO spans
+    metrics.tagSpan(executionSpan)
 
     val executionContext = execution.context
       .withEntry(Span.Key, executionSpan)
