@@ -20,7 +20,7 @@ import java.util.UUID
 
 import com.datastax.driver.core._
 import kamon.instrumentation.cassandra.client.ClientInstrumentation.ClusterManagerBridge
-import kamon.instrumentation.cassandra.metrics.{PoolWithMetrics, PoolWithQueryMetrics}
+import kamon.instrumentation.cassandra.metrics.PoolWithMetrics
 import kamon.instrumentation.context.HasContext.MixinWithInitializer
 import kanela.agent.api.instrumentation.InstrumentationBuilder
 import kanela.agent.api.instrumentation.bridge.FieldBridge
@@ -84,7 +84,7 @@ class ClientInstrumentation extends InstrumentationBuilder {
   /*Query metrics are tagged with target information (based on config)
   * so all query metrics are mixed into a Host object*/
   onType("com.datastax.driver.core.Host")
-    .mixin(classOf[PoolWithQueryMetrics])
+    .mixin(classOf[PoolWithMetrics])
     .advise(method("setLocationInfo"), HostLocationAdvice)
 
 }

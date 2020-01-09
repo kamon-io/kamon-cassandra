@@ -12,13 +12,14 @@ import kamon.trace.Span
 object CassandraInstrumentation {
 
   case class TargetNode(address: String, dc: String, rack: String, cluster: String)
-  case class Settings(node: TagMode, rack: TagMode, dc: TagMode, cluster: TagMode)
+  case class Settings(poolMetrics: Boolean, node: TagMode, rack: TagMode, dc: TagMode, cluster: TagMode)
 
   @volatile var settings: Settings = loadConfig(Kamon.config())
 
   private val UnknownTargetTagValue = "unknown"
 
   def loadConfig(config: Config) = Settings(
+    poolMetrics = config.getBoolean("kamon.cassandra.track-pool-metrics"),
     node = TagMode.from(config.getString("kamon.cassandra.tracing.tag.node")),
     rack = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
     dc   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
@@ -39,7 +40,7 @@ object CassandraInstrumentation {
     )
   }
 
-
+//TODO probably goes out
   def targetMetricTags(target: TargetNode): TagSet = {
     val metricEnabledTags = Seq(
       ("cassandra.target", target.address, settings.node),
@@ -60,7 +61,5 @@ object CassandraInstrumentation {
     SpanTagger.tag(span, "cassandra.rack", target.rack, settings.rack)
     SpanTagger.tag(span, "cassandra.cluster", target.cluster, settings.cluster)
   }
-
-
 
 }

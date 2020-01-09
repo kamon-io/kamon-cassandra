@@ -4,9 +4,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.metrics.HasPoolMetrics
+import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, MetricProxy}
 import kamon.instrumentation.cassandra.CassandraInstrumentation
-import kamon.instrumentation.cassandra.metrics.HostConnectionPoolMetrics.HostConnectionPoolInstruments
 import kamon.metric.Timer
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
@@ -16,7 +15,9 @@ object PoolConstructorAdvice {
   def onConstructed(@Advice.This poolWithMetrics: HostConnectionPool with HasPoolMetrics,
                     @Advice.FieldValue("host") host: Host): Unit = {
     val clusterName = poolWithMetrics.manager.getCluster.getClusterName
-    poolWithMetrics.setMetrics(new HostConnectionPoolInstruments(CassandraInstrumentation.targetFromHost(host, clusterName)))
+    val node = CassandraInstrumentation.targetFromHost(host, clusterName)
+
+    poolWithMetrics.setMetrics(new MetricProxy(node))
   }
 }
 
@@ -28,7 +29,7 @@ object BorrowAdvice {
 
   @Advice.OnMethodEnter
   def startBorrow(@Advice.This poolMetrics: HasPoolMetrics): Timer.Started = {
-    poolMetrics.getMetrics.borrow.start()
+    poolMetrics.getMetrics.recordBorrow
   }
 
   @Advice.OnMethodExit(suppress = classOf[Throwable])
@@ -38,16 +39,11 @@ object BorrowAdvice {
                   @Advice.This poolMetrics: HasPoolMetrics,
                   @Advice.FieldValue("totalInFlight") totalInflight: AtomicInteger): Unit = {
 
-    val metrics = poolMetrics.getMetrics
-
     GuavaCompatibility.INSTANCE.addCallback(connection, new FutureCallback[Connection]() {
-
       override def onSuccess(borrowedConnection: Connection): Unit = {
         timer.stop()
-        metrics.inFlight.record(borrowedConnection.inFlight.get)
       }
-
-      override def onFailure(t: Throwable): Unit = ()
+      override def onFailure(t: Throwable): Unit = timer.stop() //TODO failure count, should it mix with succeseful borrows
     })
   }
 }
@@ -67,7 +63,7 @@ object InitPoolAdvice {
 
     done.addListener(new Runnable {
       override def run(): Unit = {
-        hasPoolMetrics.getMetrics.size.increment(openConnections.get())
+        hasPoolMetrics.getMetrics.connectionsOpened(openConnections.get())
       }
     }, Kamon.scheduler())
   }
@@ -77,16 +73,14 @@ object CreateConnectionAdvice {
   @Advice.OnMethodExit
   def onConnectionCreated(@Advice.This hasPoolMetrics: HasPoolMetrics, @Advice.Return created: Boolean): Unit =
     if (created) {
-      hasPoolMetrics.getMetrics.size.increment()
+      hasPoolMetrics.getMetrics.connectionsOpened(1)
     }
 }
 
 object TrashConnectionAdvice {
   @Advice.OnMethodExit
   def onConnectionTrashed(@Advice.This hasPoolMetrics: HasPoolMetrics, @Advice.FieldValue("host") host: Host): Unit = {
-    val metrics = hasPoolMetrics.getMetrics
-    metrics.trashed.increment()
-    metrics.size.decrement()
+    hasPoolMetrics.getMetrics.connectionTrashed
   }
 }
 
@@ -94,7 +88,7 @@ object TrashConnectionAdvice {
 object ConnectionDefunctAdvice {
   @Advice.OnMethodExit
   def onConnectionDefunct(@Advice.This hasPoolMetrics: HasPoolMetrics): Unit = {
-    hasPoolMetrics.getMetrics.size.decrement()
+    hasPoolMetrics.getMetrics.connectionClosed
   }
 }
 
