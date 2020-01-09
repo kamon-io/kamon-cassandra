@@ -9,16 +9,21 @@ import kamon.instrumentation.trace.SpanTagger.TagMode
 import kamon.tag.TagSet
 import kamon.trace.Span
 
+import scala.concurrent.duration.Duration
+
 object CassandraInstrumentation {
 
   case class TargetNode(address: String, dc: String, rack: String, cluster: String)
-  case class Settings(poolMetrics: Boolean, host: TagMode, rack: TagMode, dc: TagMode, cluster: TagMode)
+  case class Settings(sampleInterval: Duration, poolMetrics: Boolean, host: TagMode, rack: TagMode, dc: TagMode, cluster: TagMode)
 
   @volatile var settings: Settings = loadConfig(Kamon.config())
 
   private val UnknownTargetTagValue = "unknown"
 
   def loadConfig(config: Config) = Settings(
+    sampleInterval = Duration.fromNanos(
+      config.getDuration("kamon.cassandra.sample-interval").toNanos
+    ),
     poolMetrics = config.getBoolean("kamon.cassandra.track-pool-metrics"),
     host = TagMode.from(config.getString("kamon.cassandra.tracing.tag.host")),
     rack = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),

@@ -53,6 +53,7 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .advise(method("onConnectionDefunct"), ConnectionDefunctAdvice)
     .advise(isConstructor, PoolConstructorAdvice)
     .advise(method("initAsync"), InitPoolAdvice)
+    .advise(method("closeAsync"), PoolCloseAdvice)
     .mixin(classOf[PoolWithMetrics])
 
   /*Trace each query sub-execution as a child of client query,
