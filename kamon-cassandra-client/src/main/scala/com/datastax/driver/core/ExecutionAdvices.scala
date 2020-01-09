@@ -41,6 +41,7 @@ object QueryExecutionAdvice {
       executionSpan.tag("cassandra.speculative", true)
     }
     if (queryState.get().isCancelled) metrics.cancelation()
+    host.getMetrics.executionStarted()
 
     metrics.tagSpan(executionSpan)
 
@@ -107,6 +108,8 @@ object OnSetAdvice {
       currentHost.getMetrics.retry()
     }
     if (response.`type` == Response.Type.ERROR) executionSpan.fail(response.`type`.name())
+
+    currentHost.getMetrics.executionComplete()
     //In 7   order to correlate paging requests with initial one, carry context with message
     response.asInstanceOf[HasContext].setContext(execution.context)
     executionSpan.finish()
@@ -121,7 +124,7 @@ object OnExceptionAdvice {
                   @Advice.Argument(1) exception: Exception,
                   @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
     currentHost.getMetrics.error()
-
+    currentHost.getMetrics.executionStarted()
     execution.context.get(Span.Key)
       .fail(exception)
       .finish()
@@ -135,7 +138,7 @@ object OnTimeoutAdvice {
                 @Advice.Argument(0) connection: Connection,
                 @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
     currentHost.getMetrics.timeout()
-
+    currentHost.getMetrics.executionStarted()
     execution.context.get(Span.Key)
       .fail("timeout")
       .finish()

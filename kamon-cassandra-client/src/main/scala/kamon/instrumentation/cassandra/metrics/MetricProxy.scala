@@ -57,6 +57,9 @@ class MetricProxy(node: TargetNode) {
   def executionStarted(): Unit = {
     sessionMetrics.inFlightRequests.increment()//TODO Exec endded on all others or?
   }
+  def executionComplete(): Unit = {
+    sessionMetrics.inFlightRequests.decrement()//TODO Exec endded on all others or?
+  }
 
   def recordInFlightSample(value: Long): Unit = if(poolMetricsEnabled) poolMetrics.inFlight.record(value)
 
