@@ -14,10 +14,10 @@ import kamon.trace.Span
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 object QueryOperations {
-  val ExecutionPrefix = "cassandra.client.query"
+  val ExecutionPrefix = "query"
   val QueryPrepareOperationName = ExecutionPrefix + ".prepare"
   val ExecutionOperationName = ExecutionPrefix + ".execution"
-  val SpeculativeExecutionOperationName = ExecutionOperationName + ".speculative"
+  val SpeculativeExecutionOperationName = ExecutionOperationName + ".speculative" //speculative should move to tag cassandra.speculative
 }
 
 object QueryExecutionAdvice {
@@ -32,14 +32,15 @@ object QueryExecutionAdvice {
                   @Advice.FieldValue("queryStateRef") queryState: AtomicReference[QueryState]): Unit = {
     val metrics = host.getMetrics
 
-    val isSpeculative = position > 0
-    val operationName = if (isSpeculative) SpeculativeExecutionOperationName else ExecutionOperationName
-
-    if (isSpeculative) metrics.speculative.increment()
-    if (queryState.get().isCancelled) metrics.cancelled.increment()
-
     val clientSpan = Kamon.currentSpan()
-    val executionSpan = Kamon.spanBuilder(operationName).asChildOf(clientSpan).start()
+    val executionSpan = Kamon.clientSpanBuilder(ExecutionOperationName, "cassandra.client").asChildOf(clientSpan).start()
+
+    val isSpeculative = position > 0
+    if (isSpeculative) {
+      metrics.speculative.increment()
+      executionSpan.tag("cassandra.specluative", true)
+    }
+    if (queryState.get().isCancelled) metrics.cancelled.increment()
 
     metrics.tagSpan(executionSpan)
 
@@ -102,7 +103,7 @@ object OnSetAdvice {
     val executionSpan = execution.context.get(Span.Key)
     if (response.isInstanceOf[Responses.Result.Prepared]) executionSpan.name(QueryPrepareOperationName)
     if (execution.retryCount() > 0) {
-      executionSpan.tag("retry", true)
+      executionSpan.tag("cassandra.retry", true)
       currentHost.getMetrics.retries.increment()
     }
     if (response.`type` == Response.Type.ERROR) executionSpan.fail(response.`type`.name())
@@ -120,6 +121,7 @@ object OnExceptionAdvice {
                   @Advice.Argument(1) exception: Exception,
                   @Advice.FieldValue("current") currentHost: Host with HasQueryMetrics): Unit = {
     currentHost.getMetrics.errors.increment()
+
 
     execution.context.get(Span.Key)
       .fail(exception)

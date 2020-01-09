@@ -18,7 +18,7 @@ object QueryMetrics {
   )
   val RetriedExecutions = Kamon.counter(
     name = "cassandra.query.retries",
-    description = "Count of executions that were retries"
+    description = "Count of executions that were retries" //TODO actually, successeful executions, not al
   )
   val SpeculativeExecutions = Kamon.counter(
     name = "cassandra.query.speculative",
