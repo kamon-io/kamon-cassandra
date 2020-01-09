@@ -17,7 +17,6 @@ object QueryOperations {
   val ExecutionPrefix = "query"
   val QueryPrepareOperationName = ExecutionPrefix + ".prepare"
   val ExecutionOperationName = ExecutionPrefix + ".execution"
-  val SpeculativeExecutionOperationName = ExecutionOperationName + ".speculative" //speculative should move to tag cassandra.speculative
 }
 
 object QueryExecutionAdvice {
