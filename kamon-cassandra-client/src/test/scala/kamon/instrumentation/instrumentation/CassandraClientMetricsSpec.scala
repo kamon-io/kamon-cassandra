@@ -18,7 +18,7 @@ package kamon.instrumentation.instrumentation
 import com.datastax.driver.core.Session
 import kamon.Kamon
 import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
-import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
+import kamon.instrumentation.cassandra.metrics.HostConnectionPoolMetrics.HostConnectionPoolInstruments
 import kamon.instrumentation.cassandra.metrics.QueryMetrics.QueryInstruments
 import kamon.instrumentation.executor.ExecutorMetrics
 import kamon.tag.TagSet
@@ -42,14 +42,13 @@ class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually 
       }
 
       val node = TargetNode("127.0.0.1", "datacenter1", "rack1", "cluster1")
-      val poolMetrics = new PoolInstruments(node)
+      val poolMetrics = new HostConnectionPoolInstruments(node)
       val queryMetrics = new QueryInstruments(node)
 
       eventually(timeout(3 seconds)) {
         poolMetrics.borrow.distribution(false).max shouldBe >=(1L)
         poolMetrics.size.distribution(false).max should be > 0L
-        poolMetrics.inflightPerConnection.distribution(false).max should be > 0L
-        poolMetrics.inflightPerHost.distribution(false).max should be > 0L
+        poolMetrics.inflight.distribution(false).max should be > 0L
 
         queryMetrics.errors.value(true) should equal(0)
         queryMetrics.timeouts.value(true) should equal(0)

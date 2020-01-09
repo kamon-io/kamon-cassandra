@@ -1,17 +1,17 @@
 package kamon.instrumentation.cassandra.metrics
 
-import kamon.instrumentation.cassandra.metrics.PoolMetrics.PoolInstruments
+import kamon.instrumentation.cassandra.metrics.HostConnectionPoolMetrics.HostConnectionPoolInstruments
 import kamon.instrumentation.cassandra.metrics.QueryMetrics.QueryInstruments
 
 trait HasPoolMetrics {
-  def setMetrics(metrics: PoolInstruments): Unit
-  def getMetrics: PoolInstruments
+  def setMetrics(metrics: HostConnectionPoolInstruments): Unit
+  def getMetrics: HostConnectionPoolInstruments
 }
 
 class PoolWithMetrics extends HasPoolMetrics {
-  private var _metrics: PoolInstruments = _
-  def setMetrics(metrics: PoolInstruments): Unit = _metrics = metrics
-  def getMetrics: PoolInstruments = _metrics
+  private var _metrics: HostConnectionPoolInstruments = _
+  def setMetrics(metrics: HostConnectionPoolInstruments): Unit = _metrics = metrics
+  def getMetrics: HostConnectionPoolInstruments = _metrics
 }
 
 
