@@ -28,7 +28,7 @@ val cassandraUnit	      = "org.cassandraunit"         % "cassandra-unit"       	
 val logbackCore         = "ch.qos.logback"            % "logback-core"              % "1.2.3"
 
 
-
+crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.1")
 
 
 lazy val root = (project in file("."))
