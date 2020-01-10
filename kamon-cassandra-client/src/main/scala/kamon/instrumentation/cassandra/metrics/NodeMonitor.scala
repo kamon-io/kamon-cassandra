@@ -9,7 +9,7 @@ import kamon.trace.Span
 
 class NodeMonitor(node: Node) {
   val sessionMetrics = new SessionInstruments(node)
-  val poolMetrics = if(CassandraInstrumentation.settings.poolMetrics) {
+  val poolMetrics = if (CassandraInstrumentation.settings.poolMetrics) {
     new HostConnectionPoolInstruments(node)
   } else null
 
@@ -21,22 +21,22 @@ class NodeMonitor(node: Node) {
 
   def connectionsOpened(count: Int): Unit = {
     sessionMetrics.size.increment(count)
-    if(poolMetricsEnabled) poolMetrics.size.increment(count)
+    if (poolMetricsEnabled) poolMetrics.size.increment(count)
   }
 
   def connectionClosed(): Unit = {
     sessionMetrics.size.decrement()
-    if(poolMetricsEnabled) poolMetrics.size.decrement()
+    if (poolMetricsEnabled) poolMetrics.size.decrement()
   }
 
   def clientError(): Unit = {
     sessionMetrics.clientErrors.increment()
-    if(poolMetricsEnabled) poolMetrics.clientErrors.increment()
+    if (poolMetricsEnabled) poolMetrics.clientErrors.increment()
   }
 
   def serverError(): Unit = {
     sessionMetrics.serverErrors.increment()
-    if(poolMetricsEnabled) poolMetrics.serverErrors.increment()
+    if (poolMetricsEnabled) poolMetrics.serverErrors.increment()
   }
 
   def retry(): Unit = {
@@ -45,17 +45,17 @@ class NodeMonitor(node: Node) {
 
   def timeout(): Unit = {
     sessionMetrics.timeouts.increment()
-    if(poolMetricsEnabled) poolMetrics.timeouts.increment()
+    if (poolMetricsEnabled) poolMetrics.timeouts.increment()
   }
 
   def cancellation(): Unit = {
     sessionMetrics.canceled.increment()
-    if(poolMetricsEnabled) poolMetrics.canceled.increment()
+    if (poolMetricsEnabled) poolMetrics.canceled.increment()
   }
 
   def speculativeExecution(): Unit = {
     sessionMetrics.speculations.increment()
-    if(poolMetricsEnabled) poolMetrics.triggeredSpeculations.increment()
+    if (poolMetricsEnabled) poolMetrics.triggeredSpeculations.increment()
   }
 
   def executionStarted(): Unit = {
@@ -66,7 +66,8 @@ class NodeMonitor(node: Node) {
     sessionMetrics.inFlightRequests.decrement()
   }
 
-  def recordInFlightSample(value: Long): Unit = if(poolMetricsEnabled) poolMetrics.inFlight.record(value)
+  def recordInFlightSample(value: Long): Unit =
+    if (poolMetricsEnabled) poolMetrics.inFlight.record(value)
 
   def connectionTrashed(): Unit = {
     sessionMetrics.trashedConnections.increment()
@@ -74,6 +75,6 @@ class NodeMonitor(node: Node) {
 
   def recordBorrow(nanos: Long): Unit = {
     sessionMetrics.borrow.record(nanos)
-    if(poolMetricsEnabled) poolMetrics.borrow.record(nanos)
+    if (poolMetricsEnabled) poolMetrics.borrow.record(nanos)
   }
 }

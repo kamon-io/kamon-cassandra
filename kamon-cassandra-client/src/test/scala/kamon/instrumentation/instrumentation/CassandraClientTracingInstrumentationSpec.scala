@@ -31,33 +31,47 @@ import kamon.tag.Lookups._
 
 import scala.util.Try
 
-
-
-class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
-  with  MetricInspection.Syntax with InstrumentInspection.Syntax  with Reconfigure with OptionValues  with TestSpanReporter {
+class CassandraClientTracingInstrumentationSpec
+    extends WordSpec
+    with Matchers
+    with Eventually
+    with SpanSugar
+    with BeforeAndAfterAll
+    with MetricInspection.Syntax
+    with InstrumentInspection.Syntax
+    with Reconfigure
+    with OptionValues
+    with TestSpanReporter {
 
   "the CassandraClientTracingInstrumentation" should {
 
     "trace query prepare" in {
-      session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING")
+      session.prepare(
+        "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
+      )
       eventually(timeout(10 seconds)) {
-        testSpanReporter().nextSpan().map(_.operationName) shouldBe Some(QueryOperations.QueryPrepareOperationName)
+        testSpanReporter().nextSpan().map(_.operationName) shouldBe Some(
+          QueryOperations.QueryPrepareOperationName
+        )
       }
     }
 
     "trace execution" in {
       testSpanReporter().clear()
-      session.execute("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING")
+      session.execute(
+        "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
+      )
       eventually(timeout(10 seconds)) {
-        val spans = testSpanReporter().spans()
-        val clientSpan = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
+        val spans         = testSpanReporter().spans()
+        val clientSpan    = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
         val executionSpan = spans.find(_.operationName == QueryOperations.ExecutionOperationName)
 
         clientSpan should not be empty
         executionSpan should not be empty
 
-        executionSpan.get.parentId should equal (clientSpan.get.id)
-        executionSpan.get.marks.find(_.key == "cassandra.connection.write-started") should not be empty
+        executionSpan.get.parentId should equal(clientSpan.get.id)
+        executionSpan.get.marks
+          .find(_.key == "cassandra.connection.write-started") should not be empty
       }
     }
 
@@ -76,8 +90,6 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
       }
     }
 
-
-
     "trace individual page executions" in {
       testSpanReporter().clear()
 
@@ -91,15 +103,15 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
       session.execute(query).iterator().asScala.foreach(_ => ())
 
       eventually(timeout(10 seconds)) {
-        val spans = testSpanReporter().spans()
-        val clientSpan = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
+        val spans          = testSpanReporter().spans()
+        val clientSpan     = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
         val executionSpans = spans.filter(_.operationName == QueryOperations.ExecutionOperationName)
 
         clientSpan should not be empty
         executionSpans.size should equal(3)
 
-        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetch-size")) should equal (5L)
-        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetched")) should equal (5L)
+        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetch-size")) should equal(5L)
+        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetched")) should equal(5L)
         clientSpan.get.tags.get(plainBoolean("cassandra.client.rs.has-more")) shouldBe true
 
       }
@@ -107,7 +119,7 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
   }
 
   var registration: Registration = _
-  var session:Session = _
+  var session:      Session      = _
 
   override protected def beforeAll(): Unit = {
     enableFastSpanFlushing()
@@ -117,9 +129,11 @@ class CassandraClientTracingInstrumentationSpec extends WordSpec with Matchers w
     Try(EmbeddedCassandraServerHelper.cleanEmbeddedCassandra())
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
+    session.execute(
+      "create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}"
+    )
     session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
-    for(i <- 1 to 12) {
+    for (i <- 1 to 12) {
       session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
     }
     session.execute("USE kamon_cassandra_test")

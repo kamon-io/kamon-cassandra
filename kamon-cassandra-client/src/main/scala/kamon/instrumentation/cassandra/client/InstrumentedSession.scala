@@ -40,7 +40,6 @@ class InstrumentedSession(underlying: Session) extends AbstractSession {
   override def init(): Session =
     new InstrumentedSession(underlying.init())
 
-
   override def initAsync(): ListenableFuture[Session] = {
     Futures.transform(underlying.initAsync(), new Function[Session, Session] {
       override def apply(session: Session): Session =
@@ -48,12 +47,14 @@ class InstrumentedSession(underlying: Session) extends AbstractSession {
     })
   }
 
-  override def prepareAsync(query: String, customPayload: util.Map[String, ByteBuffer]): ListenableFuture[PreparedStatement] = {
+  override def prepareAsync(
+      query:         String,
+      customPayload: util.Map[String, ByteBuffer]
+  ): ListenableFuture[PreparedStatement] = {
     val statement = new SimpleStatement(query)
     statement.setOutgoingPayload(customPayload)
     underlying.prepareAsync(statement)
   }
-
 
   /** Try extracting type of a DML statement based on query string prefix.
     * It could be done matching on QueryBuilder statement subtypes but fails on SimpleStatements
@@ -68,10 +69,11 @@ class InstrumentedSession(underlying: Session) extends AbstractSession {
   }
 
   override def executeAsync(statement: Statement): ResultSetFuture = {
-    val query = getQuery(statement)
+    val query         = getQuery(statement)
     val statementKind = extractStatementType(query)
 
-    val clientSpan = Kamon.spanBuilder("cassandra.client.query")
+    val clientSpan = Kamon
+      .spanBuilder("cassandra.client.query")
       .tagMetrics("span.kind", "client")
       .tag("db.statement", query)
       .tag("db.type", "cassandra")
@@ -92,39 +94,41 @@ class InstrumentedSession(underlying: Session) extends AbstractSession {
         throw cause
     }
 
-
-    Futures.addCallback(future, new FutureCallback[ResultSet] {
-      override def onSuccess(result: ResultSet): Unit = {
-        recordClientQueryExecutionInfo(clientSpan, result)
-        result.getExecutionInfo.getStatement match {
-          case b: BoundStatement =>
-            b.preparedStatement.getQueryString
-          case r: RegularStatement =>
-            r.getQueryString
+    Futures.addCallback(
+      future,
+      new FutureCallback[ResultSet] {
+        override def onSuccess(result: ResultSet): Unit = {
+          recordClientQueryExecutionInfo(clientSpan, result)
+          result.getExecutionInfo.getStatement match {
+            case b: BoundStatement =>
+              b.preparedStatement.getQueryString
+            case r: RegularStatement =>
+              r.getQueryString
+          }
+          clientSpan.finish()
         }
-        clientSpan.finish()
-      }
 
-      override def onFailure(cause: Throwable): Unit = {
-        clientSpan.fail(cause.getMessage, cause)
-        clientSpan.finish()
+        override def onFailure(cause: Throwable): Unit = {
+          clientSpan.fail(cause.getMessage, cause)
+          clientSpan.finish()
+        }
       }
-    })
+    )
     future
   }
 
   private def recordClientQueryExecutionInfo(clientSpan: Span, result: ResultSet): Unit = {
-    val info = result.getExecutionInfo
+    val info    = result.getExecutionInfo
     val hasMore = !result.isFullyFetched
 
     //does not invoke actual trace fetch
     val trace = info.getQueryTrace
-    if(trace != null) {
+    if (trace != null) {
       clientSpan.tag("cassandra.client.rs.session-id", trace.getTraceId.toString)
     }
 
     val cl = info.getAchievedConsistencyLevel
-    if(cl != null) {
+    if (cl != null) {
       clientSpan.tag("cassandra.client.rs.cl", cl.name())
     }
 
@@ -145,7 +149,6 @@ class InstrumentedSession(underlying: Session) extends AbstractSession {
 
   override def getState: Session.State =
     underlying.getState
-
 
   def getQuery(statement: Statement): String = statement match {
     case b: BoundStatement =>

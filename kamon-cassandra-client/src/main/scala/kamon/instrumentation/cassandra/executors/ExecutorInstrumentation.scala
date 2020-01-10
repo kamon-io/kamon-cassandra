@@ -25,12 +25,19 @@ trait ExecutorMetrics {
 
   def instrument(callable: Callable[ExecutorService], name: String): ExecutorService =
     ExecutorInstrumentation.instrument(
-      callable.call(), metricName(name), componentTags
+      callable.call(),
+      metricName(name),
+      componentTags
     )
 
-  def instrumentScheduled(callable: Callable[ScheduledExecutorService], name: String): ScheduledExecutorService =
+  def instrumentScheduled(
+      callable: Callable[ScheduledExecutorService],
+      name:     String
+  ): ScheduledExecutorService =
     ExecutorInstrumentation.instrumentScheduledExecutor(
-      callable.call(), metricName(name), componentTags
+      callable.call(),
+      metricName(name),
+      componentTags
     )
 }
 
@@ -45,18 +52,22 @@ object CreateBlockingTasksExecutorAdvice extends ExecutorMetrics {
 }
 
 object CreateReaperExecutorAdvice extends ExecutorMetrics {
-  def onExecutorCreated(@SuperCall callable: Callable[ScheduledExecutorService]): ScheduledExecutorService =
+  def onExecutorCreated(
+      @SuperCall callable: Callable[ScheduledExecutorService]
+  ): ScheduledExecutorService =
     instrumentScheduled(callable, "reaper")
 }
 
-
 object CreateScheduledTasksExecutorAdvice extends ExecutorMetrics {
-  def onExecutorCreated(@SuperCall callable: Callable[ScheduledExecutorService]): ScheduledExecutorService =
+  def onExecutorCreated(
+      @SuperCall callable: Callable[ScheduledExecutorService]
+  ): ScheduledExecutorService =
     instrumentScheduled(callable, "scheduled-tasks")
 }
 
 object CreateReconnectionExecutorAdvice extends ExecutorMetrics {
-  def onExecutorCreated(@SuperCall callable: Callable[ScheduledExecutorService]): ScheduledExecutorService =
+  def onExecutorCreated(
+      @SuperCall callable: Callable[ScheduledExecutorService]
+  ): ScheduledExecutorService =
     instrumentScheduled(callable, "reconnection")
 }
-

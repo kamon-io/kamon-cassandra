@@ -25,7 +25,6 @@ import kamon.instrumentation.context.HasContext.MixinWithInitializer
 import kanela.agent.api.instrumentation.InstrumentationBuilder
 import kanela.agent.api.instrumentation.bridge.FieldBridge
 
-
 object ClientInstrumentation {
   trait ClusterManagerBridge {
     @FieldBridge("clusterName")
@@ -43,9 +42,9 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .bridge(classOf[ClusterManagerBridge])
 
   /*Instrument  connection pools (one per target host)
-  * Pool size is incremented on pool init and when new connections are added
-  * and decremented when connection is deemed defunct or explicitly trashed.
-  * Pool metrics are mixed in the pool object itself*/
+   * Pool size is incremented on pool init and when new connections are added
+   * and decremented when connection is deemed defunct or explicitly trashed.
+   * Pool metrics are mixed in the pool object itself*/
   onType("com.datastax.driver.core.HostConnectionPool")
     .advise(method("borrowConnection"), BorrowAdvice)
     .advise(method("trashConnection"), TrashConnectionAdvice)
@@ -57,9 +56,9 @@ class ClientInstrumentation extends InstrumentationBuilder {
     .mixin(classOf[PoolWithMetrics])
 
   /*Trace each query sub-execution as a child of client query,
-  * this includes retries, speculative executions and fetchMore executions.
-  * Once response is ready (onSet), context is carried via Message.Response mixin
-  * to be used for further fetches*/
+   * this includes retries, speculative executions and fetchMore executions.
+   * Once response is ready (onSet), context is carried via Message.Response mixin
+   * to be used for further fetches*/
   onType("com.datastax.driver.core.RequestHandler$SpeculativeExecution")
     .advise(method("query"), QueryExecutionAdvice)
     .advise(method("write"), QueryWriteAdvice)
@@ -74,19 +73,17 @@ class ClientInstrumentation extends InstrumentationBuilder {
   onType("com.datastax.driver.core.ArrayBackedResultSet")
     .advise(method("fromMessage"), OnResultSetConstruction)
 
-
   /*In order for fetchMore execution to be a sibling of original execution
-  * we need to carry parent-span id through result sets */
+   * we need to carry parent-span id through result sets */
   onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
     .mixin(classOf[MixinWithInitializer])
   onType("com.datastax.driver.core.ArrayBackedResultSet$MultiPage")
     .advise(method("queryNextPage"), OnFetchMore)
 
   /*Query metrics are tagged with target information (based on config)
-  * so all query metrics are mixed into a Host object*/
+   * so all query metrics are mixed into a Host object*/
   onType("com.datastax.driver.core.Host")
     .mixin(classOf[PoolWithMetrics])
     .advise(method("setLocationInfo"), HostLocationAdvice)
 
 }
-

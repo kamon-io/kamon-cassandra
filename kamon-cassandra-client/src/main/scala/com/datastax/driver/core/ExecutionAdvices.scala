@@ -17,7 +17,7 @@ import kanela.agent.libs.net.bytebuddy.asm.Advice
 object QueryOperations {
   val ExecutionPrefix = "query"
   val QueryPrepareOperationName: String = ExecutionPrefix + ".prepare"
-  val ExecutionOperationName: String = ExecutionPrefix + ".execution"
+  val ExecutionOperationName:    String = ExecutionPrefix + ".execution"
 }
 
 object QueryExecutionAdvice {
@@ -26,14 +26,19 @@ object QueryExecutionAdvice {
   val ParentSpanKey: Context.Key[Span] = Context.key[Span]("__parent-span", Span.Empty)
 
   @Advice.OnMethodEnter
-  def onQueryExec(@Advice.This execution: HasContext,
-                  @Advice.Argument(0) host: Host with HasPoolMetrics,
-                  @Advice.FieldValue("position") position: Int,
-                  @Advice.FieldValue("queryStateRef") queryState: AtomicReference[QueryState]): Unit = {
+  def onQueryExec(
+      @Advice.This execution:                         HasContext,
+      @Advice.Argument(0) host:                       Host with HasPoolMetrics,
+      @Advice.FieldValue("position") position:        Int,
+      @Advice.FieldValue("queryStateRef") queryState: AtomicReference[QueryState]
+  ): Unit = {
     val metrics = host.getMetrics
 
     val clientSpan = Kamon.currentSpan()
-    val executionSpan = Kamon.clientSpanBuilder(ExecutionOperationName, "cassandra.client").asChildOf(clientSpan).start()
+    val executionSpan = Kamon
+      .clientSpanBuilder(ExecutionOperationName, "cassandra.client")
+      .asChildOf(clientSpan)
+      .start()
 
     val isSpeculative = position > 0
     if (isSpeculative) {
@@ -53,18 +58,17 @@ object QueryExecutionAdvice {
   }
 }
 
-
 /*
-* Transfer context from msg to created result set so it can be used
-* for further page fetches
-*
-* */
+ * Transfer context from msg to created result set so it can be used
+ * for further page fetches
+ *
+ * */
 object OnResultSetConstruction {
   @Advice.OnMethodExit
   def onCreateResultSet(
-                         @Advice.Return rs: ArrayBackedResultSet,
-                         @Advice.Argument(0) msg: Responses.Result with HasContext
-                       ): Unit = if (rs.isInstanceOf[HasContext]) {
+      @Advice.Return rs:       ArrayBackedResultSet,
+      @Advice.Argument(0) msg: Responses.Result with HasContext
+  ): Unit = if (rs.isInstanceOf[HasContext]) {
     rs.asInstanceOf[HasContext].setContext(msg.context)
   }
 
@@ -82,11 +86,11 @@ object OnFetchMore {
   }
 }
 
-
 object QueryWriteAdvice {
   @Advice.OnMethodEnter
   def onStartWriting(@Advice.This execution: HasContext): Unit = {
-    execution.context.get(Span.Key)
+    execution.context
+      .get(Span.Key)
       .mark("cassandra.connection.write-started")
   }
 }
@@ -96,13 +100,16 @@ object OnSetAdvice {
   import QueryOperations._
 
   @Advice.OnMethodEnter
-  def onSetResult(@Advice.This execution: Connection.ResponseCallback with HasContext,
-                 @Advice.Argument(0) connection: Connection,
-                 @Advice.Argument(1) response: Message.Response,
-                 @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
+  def onSetResult(
+      @Advice.This execution:                    Connection.ResponseCallback with HasContext,
+      @Advice.Argument(0) connection:            Connection,
+      @Advice.Argument(1) response:              Message.Response,
+      @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics
+  ): Unit = {
 
     val executionSpan = execution.context.get(Span.Key)
-    if (response.isInstanceOf[Responses.Result.Prepared]) executionSpan.name(QueryPrepareOperationName)
+    if (response.isInstanceOf[Responses.Result.Prepared])
+      executionSpan.name(QueryPrepareOperationName)
     if (execution.retryCount() > 0) {
       executionSpan.tag("cassandra.retry", true)
       currentHost.getMetrics.retry()
@@ -122,13 +129,16 @@ object OnSetAdvice {
 //Client exceptions
 object OnExceptionAdvice {
   @Advice.OnMethodEnter
-  def onException(@Advice.This execution: HasContext,
-                  @Advice.Argument(0) connection: Connection,
-                  @Advice.Argument(1) exception: Exception,
-                  @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
+  def onException(
+      @Advice.This execution:                    HasContext,
+      @Advice.Argument(0) connection:            Connection,
+      @Advice.Argument(1) exception:             Exception,
+      @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics
+  ): Unit = {
     currentHost.getMetrics.clientError()
     currentHost.getMetrics.executionComplete()
-    execution.context.get(Span.Key)
+    execution.context
+      .get(Span.Key)
       .fail(exception)
       .finish()
   }
@@ -137,23 +147,30 @@ object OnExceptionAdvice {
 //Client timeouts
 object OnTimeoutAdvice {
   @Advice.OnMethodEnter
-  def onTimeout(@Advice.This execution: HasContext,
-                @Advice.Argument(0) connection: Connection,
-                @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
+  def onTimeout(
+      @Advice.This execution:                    HasContext,
+      @Advice.Argument(0) connection:            Connection,
+      @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics
+  ): Unit = {
     currentHost.getMetrics.timeout()
     currentHost.getMetrics.executionComplete()
-    execution.context.get(Span.Key)
+    execution.context
+      .get(Span.Key)
       .fail("timeout")
       .finish()
   }
 }
 
-
 object HostLocationAdvice {
   @Advice.OnMethodExit
-  def onHostLocationUpdate(@Advice.This host: Host with HasPoolMetrics,
-                           @Advice.FieldValue("manager") clusterManager: Any): Unit = {
-    val targetHost = CassandraInstrumentation.nodeFromHost(host, clusterManager.asInstanceOf[ClusterManagerBridge].getClusterName)
+  def onHostLocationUpdate(
+      @Advice.This host:                            Host with HasPoolMetrics,
+      @Advice.FieldValue("manager") clusterManager: Any
+  ): Unit = {
+    val targetHost = CassandraInstrumentation.nodeFromHost(
+      host,
+      clusterManager.asInstanceOf[ClusterManagerBridge].getClusterName
+    )
     host.setMetrics(new NodeMonitor(targetHost))
   }
 }

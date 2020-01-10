@@ -30,19 +30,31 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, WordSpec}
 
 import scala.util.Try
 
-class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually with SpanSugar with BeforeAndAfterAll
-  with MetricInspection.Syntax with InstrumentInspection.Syntax with OptionValues {
-
+class CassandraClientMetricsSpec
+    extends WordSpec
+    with Matchers
+    with Eventually
+    with SpanSugar
+    with BeforeAndAfterAll
+    with MetricInspection.Syntax
+    with InstrumentInspection.Syntax
+    with OptionValues {
 
   "the CassandraClientMetrics" should {
 
     "track client metrics" in {
       for (_ <- 1 to 100) yield {
-        session.execute(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
+        session.execute(
+          session
+            .prepare(
+              "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
+            )
+            .bind()
+        )
       }
 
-      val node = Node("127.0.0.1", "datacenter1", "rack1", "cluster1")
-      val poolMetrics = new HostConnectionPoolInstruments(node)
+      val node         = Node("127.0.0.1", "datacenter1", "rack1", "cluster1")
+      val poolMetrics  = new HostConnectionPoolInstruments(node)
       val queryMetrics = new NodeMonitor(node).poolMetrics
 
       eventually(timeout(3 seconds)) {
@@ -57,23 +69,31 @@ class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually 
         queryMetrics.canceled.value(true) should equal(0)
       }
 
-      val spanProcessingTime = Kamon.timer("span.processing-time").withTags(
-        TagSet.from(
-          Map(
-            "cassandra.query.kind" -> "insert",
-            "span.kind" -> "client",
-            "operation" -> "cassandra.client.query",
-            "error" -> false
+      val spanProcessingTime = Kamon
+        .timer("span.processing-time")
+        .withTags(
+          TagSet.from(
+            Map(
+              "cassandra.query.kind" -> "insert",
+              "span.kind"            -> "client",
+              "operation"            -> "cassandra.client.query",
+              "error"                -> false
+            )
           )
         )
-      )
 
       spanProcessingTime.distribution().max should be > 0L
     }
 
     "track the cassandra client executors queue size" in {
       for (_ <- 1 to 10) yield {
-        session.executeAsync(session.prepare("SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING").bind())
+        session.executeAsync(
+          session
+            .prepare(
+              "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
+            )
+            .bind()
+        )
       }
 
       eventually(timeout(10 seconds)) {
@@ -85,7 +105,6 @@ class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually 
   }
 
   var session: Session = _
-
 
   override protected def beforeAll(): Unit = {
     startCassandra()
@@ -100,7 +119,9 @@ class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually 
   private def getSession: Session = {
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    session.execute("create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}")
+    session.execute(
+      "create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}"
+    )
     session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
     session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
     session.execute("USE kamon_cassandra_test")

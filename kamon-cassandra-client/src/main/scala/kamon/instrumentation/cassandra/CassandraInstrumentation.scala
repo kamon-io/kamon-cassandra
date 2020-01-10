@@ -15,17 +15,23 @@ import scala.concurrent.duration.Duration
 object CassandraInstrumentation {
 
   case class Node(address: String, dc: String, rack: String, cluster: String)
-  case class Settings(sampleInterval: Duration, poolMetrics: Boolean, host: TagMode, rack: TagMode, dc: TagMode, cluster: TagMode)
+
+  case class Settings(
+      sampleInterval: Duration,
+      poolMetrics:    Boolean,
+      host:           TagMode,
+      rack:           TagMode,
+      dc:             TagMode,
+      cluster:        TagMode
+  )
 
   object Tags {
-    val Host = "cassandra.host"
-    val DC = "cassandra.dc"
-    val Rack = "cassandra.rack"
-    val Cluster = "cassandra.cluster"
+    val Host        = "cassandra.host"
+    val DC          = "cassandra.dc"
+    val Rack        = "cassandra.rack"
+    val Cluster     = "cassandra.cluster"
     val ErrorSource = "source"
   }
-
-
   @volatile var settings: Settings = loadConfig(Kamon.config())
 
   private val UnknownTargetTagValue = "unknown"
@@ -35,10 +41,10 @@ object CassandraInstrumentation {
       config.getDuration("kamon.cassandra.sample-interval").toNanos
     ),
     poolMetrics = config.getBoolean("kamon.cassandra.track-pool-metrics"),
-    host = TagMode.from(config.getString("kamon.cassandra.tracing.tag.host")),
-    rack = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
-    dc   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
-    cluster   = TagMode.from(config.getString("kamon.cassandra.tracing.tag.cluster"))
+    host        = TagMode.from(config.getString("kamon.cassandra.tracing.tag.host")),
+    rack        = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
+    dc          = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
+    cluster     = TagMode.from(config.getString("kamon.cassandra.tracing.tag.cluster"))
   )
 
   Kamon.onReconfigure(new OnReconfigureHook {
@@ -58,13 +64,12 @@ object CassandraInstrumentation {
   def allTags(node: Node): TagSet =
     TagSet.from(
       Map(
-        Tags.Host -> node.address,
-        Tags.DC -> node.dc,
-        Tags.Rack -> node.rack,
+        Tags.Host    -> node.address,
+        Tags.DC      -> node.dc,
+        Tags.Rack    -> node.rack,
         Tags.Cluster -> node.cluster
       )
     )
-
 
   def nodeMetricTags(node: Node): TagSet = {
     val metricEnabledTags = Seq(
@@ -72,10 +77,7 @@ object CassandraInstrumentation {
       (Tags.DC, node.dc, settings.dc),
       (Tags.Rack, node.rack, settings.rack),
       (Tags.Cluster, node.cluster, settings.cluster)
-    )
-      .filter(_._3 == TagMode.Metric)
-      .map { case (tag, value, _) => tag -> value }
-      .toMap
+    ).filter(_._3 == TagMode.Metric).map { case (tag, value, _) => tag -> value }.toMap
 
     TagSet.from(metricEnabledTags)
   }

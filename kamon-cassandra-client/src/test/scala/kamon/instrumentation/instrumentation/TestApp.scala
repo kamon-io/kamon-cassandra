@@ -3,8 +3,21 @@ package kamon.instrumentation.instrumentation
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.{Cluster, HostDistance, PerHostPercentileTracker, PlainTextAuthProvider, PoolingOptions, SocketOptions}
-import com.datastax.driver.core.policies.{DCAwareRoundRobinPolicy, DefaultRetryPolicy, LatencyAwarePolicy, LoggingRetryPolicy, TokenAwarePolicy}
+import com.datastax.driver.core.{
+  Cluster,
+  HostDistance,
+  PerHostPercentileTracker,
+  PlainTextAuthProvider,
+  PoolingOptions,
+  SocketOptions
+}
+import com.datastax.driver.core.policies.{
+  DCAwareRoundRobinPolicy,
+  DefaultRetryPolicy,
+  LatencyAwarePolicy,
+  LoggingRetryPolicy,
+  TokenAwarePolicy
+}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import javax.management.Query
 import kamon.Kamon
@@ -14,7 +27,6 @@ import scala.util.Random
 object TestApp extends App {
 
   Kamon.init()
-
 
   val poolingOptions = new PoolingOptions()
     .setConnectionsPerHost(HostDistance.REMOTE, 50, 256)
@@ -26,11 +38,13 @@ object TestApp extends App {
 
   val hostTracker = PerHostPercentileTracker.builder(1000).build()
 
-  val dcRoundRobinPolicy = DCAwareRoundRobinPolicy.builder()
+  val dcRoundRobinPolicy = DCAwareRoundRobinPolicy
+    .builder()
     .withLocalDc("datacenter1")
     .build()
 
-  val latencyAwarePolicy = LatencyAwarePolicy.builder(dcRoundRobinPolicy)
+  val latencyAwarePolicy = LatencyAwarePolicy
+    .builder(dcRoundRobinPolicy)
     .withExclusionThreshold(1.5)
     .withMininumMeasurements(50) //default
     .withRetryPeriod(1, TimeUnit.MINUTES) //default 10ms
@@ -42,7 +56,8 @@ object TestApp extends App {
   val socketOptions = new SocketOptions()
     .setReadTimeoutMillis(2200)
 
-  val cluster = Cluster.builder()
+  val cluster = Cluster
+    .builder()
     .addContactPoint(contactPoints)
     .withSocketOptions(socketOptions)
     .withRetryPolicy(new LoggingRetryPolicy(DefaultRetryPolicy.INSTANCE))
@@ -50,16 +65,15 @@ object TestApp extends App {
     .withPoolingOptions(poolingOptions)
     .build()
 
-
   val session = cluster.connect("test")
-/*CREATE TABLE test.t1 (
+  /*CREATE TABLE test.t1 (
     txt text PRIMARY KEY,
     num int
 ) */
 
   session.execute("TRUNCATE test.t1")
 
-  for(i <- 1 to 20) {
+  for (i <- 1 to 20) {
     Kamon.runWithSpan(Kamon.spanBuilder("inserting-batch").start()) {
       Kamon.currentSpan().tag("span.kind", "server")
       session.execute(
@@ -77,7 +91,7 @@ object TestApp extends App {
     }
   }
 
-Thread.sleep(10000)
+  Thread.sleep(10000)
   System.exit(-1)
 
 }
