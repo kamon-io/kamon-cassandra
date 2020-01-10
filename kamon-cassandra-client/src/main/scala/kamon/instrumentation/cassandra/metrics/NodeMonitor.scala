@@ -5,19 +5,19 @@ import kamon.instrumentation.cassandra.CassandraInstrumentation.Node
 import kamon.instrumentation.cassandra.HostConnectionPoolMetrics.HostConnectionPoolInstruments
 import kamon.instrumentation.cassandra.SessionMetrics.SessionInstruments
 import kamon.metric.Timer
-import kamon.tag.TagSet
 import kamon.trace.Span
 
-//TODO remove reconfiguration
 class NodeMonitor(node: Node) {
   val sessionMetrics = new SessionInstruments(node)
-  val poolMetrics = new HostConnectionPoolInstruments(node)
+  val poolMetrics = if(CassandraInstrumentation.settings.poolMetrics) {
+    new HostConnectionPoolInstruments(node)
+  } else null
 
   def tagSpan(span: Span): Unit = {
     CassandraInstrumentation.tagSpanWithNode(node, span)
   }
 
-  def poolMetricsEnabled = CassandraInstrumentation.settings.poolMetrics
+  def poolMetricsEnabled = poolMetrics != null
 
   def connectionsOpened(count: Int): Unit = {
     sessionMetrics.size.increment(count)

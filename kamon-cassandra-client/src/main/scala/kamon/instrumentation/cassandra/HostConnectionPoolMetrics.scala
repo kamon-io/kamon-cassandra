@@ -42,8 +42,7 @@ object HostConnectionPoolMetrics {
     description = "Number of retried executions"
   )
 
-  //TODO includes all target tags (dc, rack, cluster, ip) irregardles config, can only be enabled/disabled completely
-  class HostConnectionPoolInstruments(node: Node) extends InstrumentGroup(CassandraInstrumentation.nodeMetricTags(node)) {
+  class HostConnectionPoolInstruments(node: Node) extends InstrumentGroup(CassandraInstrumentation.allTags(node)) {
 
     val borrow: Timer                     = register(BorrowTime)
     val size: RangeSampler                = register(Size)

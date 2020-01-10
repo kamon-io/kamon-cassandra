@@ -54,6 +54,17 @@ object CassandraInstrumentation {
     )
   }
 
+  def allTags(node: Node): TagSet =
+    TagSet.from(
+      Map(
+        Tags.Host -> node.address,
+        Tags.DC -> node.dc,
+        Tags.Rack -> node.rack,
+        Tags.Cluster -> node.cluster
+      )
+    )
+
+
   def nodeMetricTags(node: Node): TagSet = {
     val metricEnabledTags = Seq(
       (Tags.Host, node.address, settings.host),
