@@ -50,7 +50,7 @@ object SessionMetrics {
     description = "Number of canceled executions"
   )
 
-  class SessionInstruments(node: Node) extends InstrumentGroup(TagSet.of("cassandra.cluster", node.cluster)) {
+  class SessionInstruments(node: Node) extends InstrumentGroup(TagSet.of(CassandraInstrumentation.Tags.Cluster, node.cluster)) {
     val trashedConnections: Counter       = register(TrashedConnections)
     val borrow: Timer                     = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)

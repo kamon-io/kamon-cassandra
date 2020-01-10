@@ -17,6 +17,14 @@ object CassandraInstrumentation {
   case class Node(address: String, dc: String, rack: String, cluster: String)
   case class Settings(sampleInterval: Duration, poolMetrics: Boolean, host: TagMode, rack: TagMode, dc: TagMode, cluster: TagMode)
 
+  object Tags {
+    val Host = "cassandra.host"
+    val DC = "cassandra.dc"
+    val Rack = "cassandra.rack"
+    val Cluster = "cassandra.cluster"
+  }
+
+
   @volatile var settings: Settings = loadConfig(Kamon.config())
 
   private val UnknownTargetTagValue = "unknown"
@@ -48,10 +56,10 @@ object CassandraInstrumentation {
 
   def nodeMetricTags(node: Node): TagSet = {
     val metricEnabledTags = Seq(
-      ("cassandra.host", node.address, settings.host), //TODO move to internal tag dictionary
-      ("cassandra.dc", node.dc, settings.dc),
-      ("cassandra.rack", node.rack, settings.rack),
-      ("cassandra.cluster", node.cluster, settings.cluster)
+      (Tags.Host, node.address, settings.host),
+      (Tags.DC, node.dc, settings.dc),
+      (Tags.Rack, node.rack, settings.rack),
+      (Tags.Cluster, node.cluster, settings.cluster)
     )
       .filter(_._3 == TagMode.Metric)
       .map { case (tag, value, _) => tag -> value }
@@ -61,10 +69,10 @@ object CassandraInstrumentation {
   }
 
   def tagSpanWithNode(node: Node, span: Span): Unit = {
-    SpanTagger.tag(span, "cassandra.host", node.address, settings.host)
-    SpanTagger.tag(span, "cassandra.dc", node.dc, settings.dc)
-    SpanTagger.tag(span, "cassandra.rack", node.rack, settings.rack)
-    SpanTagger.tag(span, "cassandra.cluster", node.cluster, settings.cluster)
+    SpanTagger.tag(span, Tags.Host, node.address, settings.host)
+    SpanTagger.tag(span, Tags.DC, node.dc, settings.dc)
+    SpanTagger.tag(span, Tags.Rack, node.rack, settings.rack)
+    SpanTagger.tag(span, Tags.Cluster, node.cluster, settings.cluster)
   }
 
 }
