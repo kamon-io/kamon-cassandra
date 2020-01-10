@@ -118,16 +118,20 @@ class InstrumentedSession(underlying: Session) extends AbstractSession {
     val hasMore = !result.isFullyFetched
 
     //does not invoke actual trace fetch
-    Option(info.getQueryTrace).foreach { trace =>
+    val trace = info.getQueryTrace
+    if(trace != null) {
       clientSpan.tag("cassandra.client.rs.session-id", trace.getTraceId.toString)
     }
-    Option(info.getAchievedConsistencyLevel).foreach { CL =>
-      clientSpan.tag("cassandra.client.rs.cl", CL.name())
+
+    val cl = info.getAchievedConsistencyLevel
+    if(cl != null) {
+      clientSpan.tag("cassandra.client.rs.cl", cl.name())
     }
 
-    clientSpan.tag("cassandra.client.rs.fetch-size", info.getStatement.getFetchSize)
-    clientSpan.tag("cassandra.client.rs.fetched", result.getAvailableWithoutFetching)
-    clientSpan.tag("cassandra.client.rs.has-more", hasMore)
+    clientSpan
+      .tag("cassandra.client.rs.fetch-size", info.getStatement.getFetchSize)
+      .tag("cassandra.client.rs.fetched", result.getAvailableWithoutFetching)
+      .tag("cassandra.client.rs.has-more", hasMore)
   }
 
   override def closeAsync(): CloseFuture =
