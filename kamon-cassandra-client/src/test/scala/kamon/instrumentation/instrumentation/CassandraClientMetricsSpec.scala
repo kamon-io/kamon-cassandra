@@ -62,11 +62,9 @@ class CassandraClientMetricsSpec
         poolMetrics.size.distribution(false).max should be > 0L
         poolMetrics.inFlight.distribution(false).max should be > 0L
 
-        queryMetrics.clientErrors.value(true) should equal(0)
-        queryMetrics.timeouts.value(true) should equal(0)
-        //queryMetrics.retries.value(true) should equal(0)
-        //queryMetrics.speculative.value(true) should equal(0)
-        queryMetrics.canceled.value(true) should equal(0)
+        poolMetrics.clientErrors.value(true) should equal(0)
+        poolMetrics.timeouts.value(true) should equal(0)
+        poolMetrics.canceled.value(true) should equal(0)
       }
 
       val spanProcessingTime = Kamon

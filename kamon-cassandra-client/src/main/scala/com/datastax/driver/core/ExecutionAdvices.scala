@@ -15,9 +15,9 @@ import kamon.trace.Span
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 object QueryOperations {
-  val ExecutionPrefix = "query"
-  val QueryPrepareOperationName: String = ExecutionPrefix + ".prepare"
-  val ExecutionOperationName:    String = ExecutionPrefix + ".execution"
+  val QueryOperationName = "query"
+  val QueryPrepareOperationName: String = QueryOperationName + ".prepare"
+  val ExecutionOperationName:    String = QueryOperationName + ".execution"
 }
 
 object QueryExecutionAdvice {

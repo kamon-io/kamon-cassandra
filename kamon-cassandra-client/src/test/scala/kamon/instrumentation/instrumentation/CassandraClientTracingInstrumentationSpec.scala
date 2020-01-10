@@ -63,7 +63,7 @@ class CassandraClientTracingInstrumentationSpec
       )
       eventually(timeout(10 seconds)) {
         val spans         = testSpanReporter().spans()
-        val clientSpan    = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
+        val clientSpan    = spans.find(_.operationName == QueryOperations.QueryOperationName)
         val executionSpan = spans.find(_.operationName == QueryOperations.ExecutionOperationName)
 
         clientSpan should not be empty
@@ -104,7 +104,7 @@ class CassandraClientTracingInstrumentationSpec
 
       eventually(timeout(10 seconds)) {
         val spans          = testSpanReporter().spans()
-        val clientSpan     = spans.find(_.operationName == QueryOperations.ExecutionPrefix)
+        val clientSpan     = spans.find(_.operationName == QueryOperations.QueryOperationName)
         val executionSpans = spans.filter(_.operationName == QueryOperations.ExecutionOperationName)
 
         clientSpan should not be empty

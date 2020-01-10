@@ -22,9 +22,10 @@ import com.datastax.driver.core._
 import com.google.common.base.Function
 import com.google.common.util.concurrent.{FutureCallback, Futures, ListenableFuture}
 import kamon.Kamon
+import kamon.instrumentation.cassandra.CassandraInstrumentation
 import kamon.trace.Span
-import scala.collection.JavaConverters._
 
+import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 object InstrumentedSession {
@@ -73,7 +74,7 @@ class InstrumentedSession(underlying: Session) extends AbstractSession {
     val statementKind = extractStatementType(query)
 
     val clientSpan = Kamon
-      .spanBuilder("cassandra.client.query")
+      .spanBuilder(QueryOperations.QueryOperationName)
       .tagMetrics("span.kind", "client")
       .tag("db.statement", query)
       .tag("db.type", "cassandra")
