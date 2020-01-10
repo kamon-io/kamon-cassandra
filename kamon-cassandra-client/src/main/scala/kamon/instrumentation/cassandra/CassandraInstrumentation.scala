@@ -22,6 +22,7 @@ object CassandraInstrumentation {
     val DC = "cassandra.dc"
     val Rack = "cassandra.rack"
     val Cluster = "cassandra.cluster"
+    val ErrorSource = "source"
   }
 
 

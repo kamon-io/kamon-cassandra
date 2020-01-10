@@ -29,9 +29,14 @@ class NodeMonitor(node: Node) {
     if(poolMetricsEnabled) poolMetrics.size.decrement()
   }
 
-  def error(): Unit = {
-    sessionMetrics.errors.increment()
-    if(poolMetricsEnabled) poolMetrics.errors.increment()
+  def clientError(): Unit = {
+    sessionMetrics.clientErrors.increment()
+    if(poolMetricsEnabled) poolMetrics.clientErrors.increment()
+  }
+
+  def serverError(): Unit = {
+    sessionMetrics.serverErrors.increment()
+    if(poolMetricsEnabled) poolMetrics.serverErrors.increment()
   }
 
   def retry(): Unit = {
@@ -67,7 +72,7 @@ class NodeMonitor(node: Node) {
     sessionMetrics.trashedConnections.increment()
   }
 
-  def recordBorrow(nanos: Long): Timer.Started = {
+  def recordBorrow(nanos: Long): Unit = {
     sessionMetrics.borrow.record(nanos)
     if(poolMetricsEnabled) poolMetrics.borrow.record(nanos)
   }

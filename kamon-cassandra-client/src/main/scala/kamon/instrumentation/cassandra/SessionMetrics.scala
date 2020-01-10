@@ -37,7 +37,7 @@ object SessionMetrics {
 
   val Errors = Kamon.counter(
     name = sessionPrefix + "errors",
-    description = "Number of client errors during execution" //TODO use this metric, introduce tag "SOURCE": SERVER|CLIENT
+    description = "Number of client errors during execution"
   )
 
   val Timeouts = Kamon.counter(
@@ -57,7 +57,8 @@ object SessionMetrics {
     val inFlightRequests: RangeSampler    = register(InFlight)
     val speculations: Counter             = register(Speculations)
     val retries: Counter                  = register(Retries)
-    val errors: Counter                   = register(Errors)
+    val clientErrors: Counter             = register(Errors).withTag(CassandraInstrumentation.Tags.ErrorSource, "client")
+    val serverErrors: Counter             = register(Errors).withTag(CassandraInstrumentation.Tags.ErrorSource, "server")
     val timeouts: Counter                 = register(Timeouts)
     val canceled: Counter                 = register(Canceled)
   }

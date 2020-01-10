@@ -109,7 +109,7 @@ object OnSetAdvice {
     }
     if (response.`type` == Response.Type.ERROR) {
       executionSpan.fail(response.`type`.name())
-      currentHost.getMetrics.serverError //TODO SERVER error tag
+      currentHost.getMetrics.serverError()
     }
 
     currentHost.getMetrics.executionComplete()
@@ -126,7 +126,7 @@ object OnExceptionAdvice {
                   @Advice.Argument(0) connection: Connection,
                   @Advice.Argument(1) exception: Exception,
                   @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
-    currentHost.getMetrics.error()  //TODO CLIENT ERROR TAG
+    currentHost.getMetrics.clientError()
     currentHost.getMetrics.executionComplete()
     execution.context.get(Span.Key)
       .fail(exception)

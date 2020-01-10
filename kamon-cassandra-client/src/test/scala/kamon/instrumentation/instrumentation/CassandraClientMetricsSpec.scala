@@ -50,7 +50,7 @@ class CassandraClientMetricsSpec extends WordSpec with Matchers with Eventually 
         poolMetrics.size.distribution(false).max should be > 0L
         poolMetrics.inFlight.distribution(false).max should be > 0L
 
-        queryMetrics.errors.value(true) should equal(0)
+        queryMetrics.clientErrors.value(true) should equal(0)
         queryMetrics.timeouts.value(true) should equal(0)
         //queryMetrics.retries.value(true) should equal(0)
         //queryMetrics.speculative.value(true) should equal(0)

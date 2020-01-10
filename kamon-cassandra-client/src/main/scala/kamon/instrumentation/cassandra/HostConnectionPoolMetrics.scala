@@ -2,6 +2,7 @@ package kamon.instrumentation.cassandra
 
 import kamon.Kamon
 import kamon.instrumentation.cassandra.CassandraInstrumentation.Node
+import kamon.instrumentation.cassandra.SessionMetrics.Errors
 import kamon.metric._
 
 object HostConnectionPoolMetrics {
@@ -24,7 +25,7 @@ object HostConnectionPoolMetrics {
 
   val Errors = Kamon.counter(
     name = poolPrefix + "errors",
-    description = "Number of client errors during execution" //TODO should this include server errors
+    description = "Number of client errors during execution"
   )
 
   val Timeouts = Kamon.counter(
@@ -47,7 +48,8 @@ object HostConnectionPoolMetrics {
     val borrow: Timer                     = register(BorrowTime)
     val size: RangeSampler                = register(Size)
     val inFlight: Histogram               = register(InFlight)
-    val errors: Counter                   = register(Errors)
+    val clientErrors: Counter             = register(Errors).withTag(CassandraInstrumentation.Tags.ErrorSource, "client")
+    val serverErrors: Counter             = register(Errors).withTag(CassandraInstrumentation.Tags.ErrorSource, "server")
     val timeouts: Counter                 = register(Timeouts)
     val canceled: Counter                 = register(Canceled)
     val triggeredSpeculations: Counter    = register(TriggeredSpeculations)
