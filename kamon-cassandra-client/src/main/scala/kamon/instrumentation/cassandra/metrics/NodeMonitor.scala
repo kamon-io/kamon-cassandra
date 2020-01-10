@@ -67,20 +67,8 @@ class NodeMonitor(node: Node) {
     sessionMetrics.trashedConnections.increment()
   }
 
-  //TODO pass t-diff and timer.record on both
-  def recordBorrow(): Timer.Started = {
-    val sessionTimer = sessionMetrics.borrow.start()
-    val poolTimer = if(poolMetricsEnabled) Some(poolMetrics.borrow.start()) else None
-
-    new Timer.Started {
-      override def stop(): Unit = {
-        sessionTimer.stop()
-        poolTimer.foreach(_.stop())
-      }
-      override def withTag(key: String, value: String): Timer.Started = this
-      override def withTag(key: String, value: Boolean): Timer.Started = this
-      override def withTag(key: String, value: Long): Timer.Started = this
-      override def withTags(tags: TagSet): Timer.Started = this
-    }
+  def recordBorrow(nanos: Long): Timer.Started = {
+    sessionMetrics.borrow.record(nanos)
+    if(poolMetricsEnabled) poolMetrics.borrow.record(nanos)
   }
 }

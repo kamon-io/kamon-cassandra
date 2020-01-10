@@ -46,22 +46,22 @@ object PoolCloseAdvice {
 object BorrowAdvice {
 
   @Advice.OnMethodEnter
-  def startBorrow(@Advice.This poolMetrics: HasPoolMetrics): Timer.Started = {
-    poolMetrics.getMetrics.recordBorrow
+  def startBorrow(@Advice.This poolMetrics: HasPoolMetrics): Long = {
+    Kamon.clock().nanos()
   }
 
   @Advice.OnMethodExit(suppress = classOf[Throwable])
   def onBorrowed(
                   @Advice.Return(readOnly = false) connection: ListenableFuture[Connection],
-                  @Advice.Enter timer: Timer.Started,
+                  @Advice.Enter start: Long,
                   @Advice.This poolMetrics: HasPoolMetrics,
                   @Advice.FieldValue("totalInFlight") totalInflight: AtomicInteger): Unit = {
 
     GuavaCompatibility.INSTANCE.addCallback(connection, new FutureCallback[Connection]() {
       override def onSuccess(borrowedConnection: Connection): Unit = {
-        timer.stop()
+        poolMetrics.getMetrics.recordBorrow(Kamon.clock().nanos() - start)
       }
-      override def onFailure(t: Throwable): Unit = timer.stop() //TODO since record is used, shouldnt record
+      override def onFailure(t: Throwable): Unit = ()
     })
   }
 }
