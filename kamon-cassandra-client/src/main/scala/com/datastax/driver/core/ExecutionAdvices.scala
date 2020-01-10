@@ -9,7 +9,7 @@ import kamon.context.Context
 import kamon.context.Storage.Scope
 import kamon.instrumentation.cassandra.CassandraInstrumentation
 import kamon.instrumentation.cassandra.client.ClientInstrumentation.ClusterManagerBridge
-import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, MetricProxy}
+import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, NodeMonitor}
 import kamon.instrumentation.context.HasContext
 import kamon.trace.Span
 import kanela.agent.libs.net.bytebuddy.asm.Advice
@@ -40,7 +40,7 @@ object QueryExecutionAdvice {
       metrics.speculativeExecution()
       executionSpan.tag("cassandra.speculative", true)
     }
-    if (queryState.get().isCancelled) metrics.cancelation()
+    if (queryState.get().isCancelled) metrics.cancellation()
     host.getMetrics.executionStarted()
 
     metrics.tagSpan(executionSpan)
@@ -107,7 +107,10 @@ object OnSetAdvice {
       executionSpan.tag("cassandra.retry", true)
       currentHost.getMetrics.retry()
     }
-    if (response.`type` == Response.Type.ERROR) executionSpan.fail(response.`type`.name())
+    if (response.`type` == Response.Type.ERROR) {
+      executionSpan.fail(response.`type`.name())
+      currentHost.getMetrics.serverError //TODO SERVER error tag
+    }
 
     currentHost.getMetrics.executionComplete()
     //In 7   order to correlate paging requests with initial one, carry context with message
@@ -123,8 +126,8 @@ object OnExceptionAdvice {
                   @Advice.Argument(0) connection: Connection,
                   @Advice.Argument(1) exception: Exception,
                   @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
-    currentHost.getMetrics.error()
-    currentHost.getMetrics.executionStarted()
+    currentHost.getMetrics.error()  //TODO CLIENT ERROR TAG
+    currentHost.getMetrics.executionComplete()
     execution.context.get(Span.Key)
       .fail(exception)
       .finish()
@@ -138,7 +141,7 @@ object OnTimeoutAdvice {
                 @Advice.Argument(0) connection: Connection,
                 @Advice.FieldValue("current") currentHost: Host with HasPoolMetrics): Unit = {
     currentHost.getMetrics.timeout()
-    currentHost.getMetrics.executionStarted()
+    currentHost.getMetrics.executionComplete()
     execution.context.get(Span.Key)
       .fail("timeout")
       .finish()
@@ -150,7 +153,7 @@ object HostLocationAdvice {
   @Advice.OnMethodExit
   def onHostLocationUpdate(@Advice.This host: Host with HasPoolMetrics,
                            @Advice.FieldValue("manager") clusterManager: Any): Unit = {
-    val targetHost = CassandraInstrumentation.targetFromHost(host, clusterManager.asInstanceOf[ClusterManagerBridge].getClusterName)
-    host.setMetrics(new MetricProxy(targetHost))
+    val targetHost = CassandraInstrumentation.nodeFromHost(host, clusterManager.asInstanceOf[ClusterManagerBridge].getClusterName)
+    host.setMetrics(new NodeMonitor(targetHost))
   }
 }

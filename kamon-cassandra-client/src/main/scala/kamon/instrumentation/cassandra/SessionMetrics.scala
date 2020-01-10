@@ -1,10 +1,9 @@
-package kamon.instrumentation.cassandra.metrics
+package kamon.instrumentation.cassandra
 
 import kamon.Kamon
-import kamon.instrumentation.cassandra.CassandraInstrumentation
-import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
+import kamon.instrumentation.cassandra.CassandraInstrumentation.Node
 import kamon.metric.{Counter, InstrumentGroup, RangeSampler, Timer}
-
+import kamon.tag.TagSet
 
 object SessionMetrics {
   private val sessionPrefix = "cassandra.client.session"
@@ -38,7 +37,7 @@ object SessionMetrics {
 
   val Errors = Kamon.counter(
     name = sessionPrefix + "errors",
-    description = "Number of client errors during ececution" //TODO should this include server errors
+    description = "Number of client errors during execution" //TODO use this metric, introduce tag "SOURCE": SERVER|CLIENT
   )
 
   val Timeouts = Kamon.counter(
@@ -51,7 +50,7 @@ object SessionMetrics {
     description = "Number of canceled executions"
   )
 
-  class SessionInstruments(node: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(node)) { //TODO only cluster tags
+  class SessionInstruments(node: Node) extends InstrumentGroup(TagSet.of("cassandra.cluster", node.cluster)) {
     val trashedConnections: Counter       = register(TrashedConnections)
     val borrow: Timer                     = register(PoolBorrowTime)
     val size: RangeSampler                = register(ConnectionPoolSize)

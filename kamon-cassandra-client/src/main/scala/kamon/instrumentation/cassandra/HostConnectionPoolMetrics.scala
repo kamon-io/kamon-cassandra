@@ -1,8 +1,7 @@
-package kamon.instrumentation.cassandra.metrics
+package kamon.instrumentation.cassandra
 
 import kamon.Kamon
-import kamon.instrumentation.cassandra.CassandraInstrumentation
-import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
+import kamon.instrumentation.cassandra.CassandraInstrumentation.Node
 import kamon.metric._
 
 object HostConnectionPoolMetrics {
@@ -17,23 +16,15 @@ object HostConnectionPoolMetrics {
     name = poolPrefix + "size",
     description = "Connection pool size for this host"
   )
-  val TrashedConnections    = Kamon.counter( //TODO not used, sad face
-    name = poolPrefix + "trashed",
-    description = "Number of trashed connections for this host"
-  )
-  val InFlight = Kamon.histogram(
-    name = poolPrefix + "in-flight",
-    description = "Number of in-flight request on this connection measured at the moment a new query is issued"
-  )
 
-  val InFlightPerConnection = Kamon.histogram( //TODO not used, sad face
+  val InFlight = Kamon.histogram(
     name = poolPrefix + "in-flight",
     description = "Number of in-flight request on this connection measured at the moment a new query is issued"
   )
 
   val Errors = Kamon.counter(
     name = poolPrefix + "errors",
-    description = "Number of client errors during ececution" //TODO should this include server errors
+    description = "Number of client errors during execution" //TODO should this include server errors
   )
 
   val Timeouts = Kamon.counter(
@@ -52,20 +43,14 @@ object HostConnectionPoolMetrics {
   )
 
   //TODO includes all target tags (dc, rack, cluster, ip) irregardles config, can only be enabled/disabled completely
-  class HostConnectionPoolInstruments(node: TargetNode) extends InstrumentGroup(CassandraInstrumentation.targetMetricTags(node)) {
-    //TODO if disabled
+  class HostConnectionPoolInstruments(node: Node) extends InstrumentGroup(CassandraInstrumentation.nodeMetricTags(node)) {
 
-
-    val trashed: Counter                  = register(TrashedConnections)
     val borrow: Timer                     = register(BorrowTime)
     val size: RangeSampler                = register(Size)
-    val inFlight: Histogram               = register(InFlight) //TODO this should be sampled every X
+    val inFlight: Histogram               = register(InFlight)
     val errors: Counter                   = register(Errors)
     val timeouts: Counter                 = register(Timeouts)
     val canceled: Counter                 = register(Canceled)
     val triggeredSpeculations: Counter    = register(TriggeredSpeculations)
   }
 }
-
-
-

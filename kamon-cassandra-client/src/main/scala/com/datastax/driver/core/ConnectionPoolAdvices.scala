@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, MetricProxy, PoolWithMetrics}
+import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, NodeMonitor, PoolWithMetrics}
 import kamon.instrumentation.cassandra.CassandraInstrumentation
 import kamon.metric.Timer
 import kanela.agent.libs.net.bytebuddy.asm.Advice
@@ -17,10 +17,10 @@ object PoolConstructorAdvice {
                     @Advice.FieldValue("host") host: Host,
                     @Advice.FieldValue("totalInFlight") totalInflight: AtomicInteger): Unit = {
     val clusterName = poolWithMetrics.manager.getCluster.getClusterName
-    val node = CassandraInstrumentation.targetFromHost(host, clusterName)
+    val node = CassandraInstrumentation.nodeFromHost(host, clusterName)
     val samplingInterval = CassandraInstrumentation.settings.sampleInterval.toMillis
 
-    poolWithMetrics.setMetrics(new MetricProxy(node))
+    poolWithMetrics.setMetrics(new NodeMonitor(node))
 
     val samplingSchedule = Kamon.scheduler().scheduleAtFixedRate(new Runnable {
       override def run(): Unit = {
@@ -61,7 +61,7 @@ object BorrowAdvice {
       override def onSuccess(borrowedConnection: Connection): Unit = {
         timer.stop()
       }
-      override def onFailure(t: Throwable): Unit = timer.stop() //TODO failure count, should it mix with succeseful borrows
+      override def onFailure(t: Throwable): Unit = timer.stop() //TODO since record is used, shouldnt record
     })
   }
 }

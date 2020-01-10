@@ -4,6 +4,7 @@ import com.datastax.driver.core.Host
 import com.typesafe.config.Config
 import kamon.Configuration.OnReconfigureHook
 import kamon.Kamon
+import kamon.instrumentation.cassandra.metrics.NodeMonitor
 import kamon.instrumentation.trace.SpanTagger
 import kamon.instrumentation.trace.SpanTagger.TagMode
 import kamon.tag.TagSet
@@ -13,7 +14,7 @@ import scala.concurrent.duration.Duration
 
 object CassandraInstrumentation {
 
-  case class TargetNode(address: String, dc: String, rack: String, cluster: String)
+  case class Node(address: String, dc: String, rack: String, cluster: String)
   case class Settings(sampleInterval: Duration, poolMetrics: Boolean, host: TagMode, rack: TagMode, dc: TagMode, cluster: TagMode)
 
   @volatile var settings: Settings = loadConfig(Kamon.config())
@@ -36,8 +37,8 @@ object CassandraInstrumentation {
       settings = loadConfig(newConfig)
   })
 
-  def targetFromHost(host: Host, cluster: String): TargetNode = {
-    TargetNode(
+  def nodeFromHost(host: Host, cluster: String): Node = {
+    Node(
       host.getAddress.getHostAddress,
       Option(host.getDatacenter).getOrElse(UnknownTargetTagValue),
       Option(host.getRack).getOrElse(UnknownTargetTagValue),
@@ -45,13 +46,12 @@ object CassandraInstrumentation {
     )
   }
 
-//TODO probably goes out
-  def targetMetricTags(target: TargetNode): TagSet = {
+  def nodeMetricTags(node: Node): TagSet = {
     val metricEnabledTags = Seq(
-      ("cassandra.host", target.address, settings.host),
-      ("cassandra.dc", target.dc, settings.dc),
-      ("cassandra.rack", target.rack, settings.rack),
-      ("cassandra.cluster", target.cluster, settings.cluster)
+      ("cassandra.host", node.address, settings.host), //TODO move to internal tag dictionary
+      ("cassandra.dc", node.dc, settings.dc),
+      ("cassandra.rack", node.rack, settings.rack),
+      ("cassandra.cluster", node.cluster, settings.cluster)
     )
       .filter(_._3 == TagMode.Metric)
       .map { case (tag, value, _) => tag -> value }
@@ -60,11 +60,11 @@ object CassandraInstrumentation {
     TagSet.from(metricEnabledTags)
   }
 
-  def tagSpanWithTarget(target: TargetNode, span: Span): Unit = {
-    SpanTagger.tag(span, "cassandra.host", target.address, settings.host)
-    SpanTagger.tag(span, "cassandra.dc", target.dc, settings.dc)
-    SpanTagger.tag(span, "cassandra.rack", target.rack, settings.rack)
-    SpanTagger.tag(span, "cassandra.cluster", target.cluster, settings.cluster)
+  def tagSpanWithNode(node: Node, span: Span): Unit = {
+    SpanTagger.tag(span, "cassandra.host", node.address, settings.host)
+    SpanTagger.tag(span, "cassandra.dc", node.dc, settings.dc)
+    SpanTagger.tag(span, "cassandra.rack", node.rack, settings.rack)
+    SpanTagger.tag(span, "cassandra.cluster", node.cluster, settings.cluster)
   }
 
 }

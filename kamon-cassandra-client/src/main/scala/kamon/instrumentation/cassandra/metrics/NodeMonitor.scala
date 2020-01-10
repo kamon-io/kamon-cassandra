@@ -1,24 +1,23 @@
 package kamon.instrumentation.cassandra.metrics
 
 import kamon.instrumentation.cassandra.CassandraInstrumentation
-import kamon.instrumentation.cassandra.CassandraInstrumentation.TargetNode
-import kamon.instrumentation.cassandra.metrics.HostConnectionPoolMetrics.HostConnectionPoolInstruments
-import kamon.instrumentation.cassandra.metrics.SessionMetrics.SessionInstruments
+import kamon.instrumentation.cassandra.CassandraInstrumentation.Node
+import kamon.instrumentation.cassandra.HostConnectionPoolMetrics.HostConnectionPoolInstruments
+import kamon.instrumentation.cassandra.SessionMetrics.SessionInstruments
 import kamon.metric.Timer
 import kamon.tag.TagSet
 import kamon.trace.Span
 
-
-class MetricProxy(node: TargetNode) {
+//TODO remove reconfiguration
+class NodeMonitor(node: Node) {
   val sessionMetrics = new SessionInstruments(node)
   val poolMetrics = new HostConnectionPoolInstruments(node)
 
   def tagSpan(span: Span): Unit = {
-    CassandraInstrumentation.tagSpanWithTarget(node, span)
+    CassandraInstrumentation.tagSpanWithNode(node, span)
   }
 
   def poolMetricsEnabled = CassandraInstrumentation.settings.poolMetrics
-
 
   def connectionsOpened(count: Int): Unit = {
     sessionMetrics.size.increment(count)
@@ -44,7 +43,7 @@ class MetricProxy(node: TargetNode) {
     if(poolMetricsEnabled) poolMetrics.timeouts.increment()
   }
 
-  def cancelation(): Unit = {
+  def cancellation(): Unit = {
     sessionMetrics.canceled.increment()
     if(poolMetricsEnabled) poolMetrics.canceled.increment()
   }
@@ -55,19 +54,20 @@ class MetricProxy(node: TargetNode) {
   }
 
   def executionStarted(): Unit = {
-    sessionMetrics.inFlightRequests.increment()//TODO Exec endded on all others or?
+    sessionMetrics.inFlightRequests.increment()
   }
+
   def executionComplete(): Unit = {
-    sessionMetrics.inFlightRequests.decrement()//TODO Exec endded on all others or?
+    sessionMetrics.inFlightRequests.decrement()
   }
 
   def recordInFlightSample(value: Long): Unit = if(poolMetricsEnabled) poolMetrics.inFlight.record(value)
 
   def connectionTrashed(): Unit = {
     sessionMetrics.trashedConnections.increment()
-    if(poolMetricsEnabled) poolMetrics.trashed.increment()
   }
 
+  //TODO pass t-diff and timer.record on both
   def recordBorrow(): Timer.Started = {
     val sessionTimer = sessionMetrics.borrow.start()
     val poolTimer = if(poolMetricsEnabled) Some(poolMetrics.borrow.start()) else None
