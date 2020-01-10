@@ -16,14 +16,14 @@ import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 object QueryOperations {
   val ExecutionPrefix = "query"
-  val QueryPrepareOperationName = ExecutionPrefix + ".prepare"
-  val ExecutionOperationName = ExecutionPrefix + ".execution"
+  val QueryPrepareOperationName: String = ExecutionPrefix + ".prepare"
+  val ExecutionOperationName: String = ExecutionPrefix + ".execution"
 }
 
 object QueryExecutionAdvice {
   import QueryOperations._
 
-  val ParentSpanKey = Context.key[Span]("__parent-span", Span.Empty)
+  val ParentSpanKey: Context.Key[Span] = Context.key[Span]("__parent-span", Span.Empty)
 
   @Advice.OnMethodEnter
   def onQueryExec(@Advice.This execution: HasContext,
