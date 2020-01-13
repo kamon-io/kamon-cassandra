@@ -6,7 +6,7 @@ import kamon.metric.{Counter, InstrumentGroup, RangeSampler, Timer}
 import kamon.tag.TagSet
 
 object SessionMetrics {
-  private val sessionPrefix = "cassandra.client.session"
+  private val sessionPrefix = "cassandra.client.session."
 
   val PoolBorrowTime = Kamon.timer(
     name        = sessionPrefix + "borrow-time",

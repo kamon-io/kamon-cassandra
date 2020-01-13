@@ -6,7 +6,7 @@ import kamon.instrumentation.cassandra.SessionMetrics.Errors
 import kamon.metric._
 
 object HostConnectionPoolMetrics {
-  private val poolPrefix = "cassandra.client.session.host"
+  private val poolPrefix = "cassandra.client.session.host."
 
   val BorrowTime = Kamon.timer(
     name        = poolPrefix + "borrow-time",
