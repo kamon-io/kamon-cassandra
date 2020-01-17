@@ -28,11 +28,7 @@ val logbackCore = "ch.qos.logback" % "logback-core" % "1.2.3"
 
 crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.1")
 
-lazy val root = (project in file("."))
-  .settings(noPublishing: _*)
-  .aggregate(cassandraClient)
-
-lazy val cassandraClient = (project in file("kamon-cassandra-client"))
+lazy val cassandraClient = (project in file("."))
   .enablePlugins(JavaAgent)
   .settings(bintrayPackage := "kamon-cassandra")
   .settings(name := "kamon-cassandra-client")
