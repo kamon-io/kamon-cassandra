@@ -43,19 +43,17 @@ class CassandraClientMetricsSpec
   "the CassandraClientMetrics" should {
 
     "track client metrics" in {
-      for (_ <- 1 to 100) yield {
-        session.execute(
-          session
-            .prepare(
-              "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
-            )
-            .bind()
+      val st = session
+        .prepare(
+          "SELECT * FROM users where name = 'kamon' ALLOW FILTERING"
         )
+        .bind()
+      for (_ <- 1 to 100) yield {
+        session.execute(st)
       }
 
-      val node         = Node("127.0.0.1", "datacenter1", "rack1", "cluster1")
-      val poolMetrics  = new HostConnectionPoolInstruments(node)
-      val queryMetrics = new NodeMonitor(node).poolMetrics
+      val node        = Node("127.0.0.1", "datacenter1", "rack1", "cluster1")
+      val poolMetrics = new HostConnectionPoolInstruments(node)
 
       eventually(timeout(3 seconds)) {
         poolMetrics.borrow.distribution(false).max shouldBe >=(1L)
@@ -67,33 +65,46 @@ class CassandraClientMetricsSpec
         poolMetrics.canceled.value(true) should equal(0)
       }
 
-      val spanProcessingTime = Kamon
+      val clientSpan = Kamon
         .timer("span.processing-time")
         .withTags(
           TagSet.from(
             Map(
-              "cassandra.query.kind" -> "insert",
+              "cassandra.query.kind" -> "select",
               "span.kind"            -> "client",
-              "operation"            -> "cassandra.client.query",
+              "operation"            -> "query",
               "error"                -> false
             )
           )
         )
 
-      spanProcessingTime.distribution().max should be > 0L
+      val executionSpan = Kamon
+        .timer("span.processing-time")
+        .withTags(
+          TagSet.from(
+            Map(
+              "span.kind"         -> "client",
+              "operation"         -> "query.execution",
+              "error"             -> false,
+              "cassandra.cluster" -> "cluster1",
+              "component"         -> "cassandra.client"
+            )
+          )
+        )
+
+      executionSpan.distribution().max should be > 0L
+      clientSpan.distribution().max should be > 0L
     }
 
     "track the cassandra client executors queue size" in {
-      for (_ <- 1 to 10) yield {
-        session.executeAsync(
-          session
-            .prepare(
-              "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
-            )
-            .bind()
+      val stmt = session
+        .prepare(
+          "SELECT * FROM users where name = 'kamon' ALLOW FILTERING"
         )
+        .bind()
+      for (_ <- 1 to 10) yield {
+        session.executeAsync(stmt)
       }
-
       eventually(timeout(10 seconds)) {
         val all = ExecutorMetrics.ThreadsTotal.instruments()
         all.map(_._2.distribution(false).max).forall(_ > 0) === true
@@ -105,28 +116,16 @@ class CassandraClientMetricsSpec
   var session: Session = _
 
   override protected def beforeAll(): Unit = {
-    startCassandra()
-  }
-
-  private def startCassandra(): Unit = {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
-    Try(EmbeddedCassandraServerHelper.cleanEmbeddedCassandra())
-    session = getSession
-  }
-
-  private def getSession: Session = {
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
-    session.execute(
-      "create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}"
-    )
-    session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
-    session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
-    session.execute("USE kamon_cassandra_test")
-    session
-  }
+    val keyspace = s"keyspaceMetricSpec"
 
-  override protected def afterAll(): Unit = {
-    session.close()
+    session.execute(
+      s"create keyspace $keyspace with replication = {'class':'SimpleStrategy', 'replication_factor':3}"
+    )
+    session.execute(s"USE $keyspace")
+    session.execute("create table users (id uuid primary key, name text )")
+    session.execute("insert into users (id, name) values (uuid(), 'kamon')")
   }
 }

@@ -4,5 +4,4 @@ lazy val latestSbtUmbrella = ProjectRef(
   "kamon-sbt-umbrella"
 )
 
-addSbtPlugin("com.lightbend.sbt" % "sbt-javaagent" % "0.1.3")
-addSbtPlugin("com.eed3si9n"      % "sbt-assembly"  % "0.14.7")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.7")

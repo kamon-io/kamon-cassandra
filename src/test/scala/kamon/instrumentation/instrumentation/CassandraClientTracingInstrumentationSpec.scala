@@ -15,7 +15,6 @@
 
 package kamon.instrumentation.instrumentation
 
-import com.datastax.driver.core
 import com.datastax.driver.core.exceptions.DriverException
 import com.datastax.driver.core.{QueryOperations, Session}
 import com.datastax.driver.core.querybuilder.QueryBuilder
@@ -28,8 +27,6 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, WordSpec}
 
 import scala.collection.JavaConverters._
 import kamon.tag.Lookups._
-
-import scala.util.Try
 
 class CassandraClientTracingInstrumentationSpec
     extends WordSpec
@@ -47,7 +44,7 @@ class CassandraClientTracingInstrumentationSpec
 
     "trace query prepare" in {
       session.prepare(
-        "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
+        "SELECT * FROM users where name = 'kamon' ALLOW FILTERING"
       )
       eventually(timeout(10 seconds)) {
         testSpanReporter().nextSpan().map(_.operationName) shouldBe Some(
@@ -59,7 +56,7 @@ class CassandraClientTracingInstrumentationSpec
     "trace execution" in {
       testSpanReporter().clear()
       session.execute(
-        "SELECT * FROM kamon_cassandra_test.users where name = 'kamon' ALLOW FILTERING"
+        "SELECT * FROM users where name = 'kamon' ALLOW FILTERING"
       )
       eventually(timeout(10 seconds)) {
         val spans         = testSpanReporter().spans()
@@ -125,22 +122,21 @@ class CassandraClientTracingInstrumentationSpec
     enableFastSpanFlushing()
     sampleAlways()
 
+    val keyspace = s"keyspaceTracingSpec"
+
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(40000L)
-    Try(EmbeddedCassandraServerHelper.cleanEmbeddedCassandra())
     session = EmbeddedCassandraServerHelper.getCluster.newSession()
 
     session.execute(
-      "create keyspace kamon_cassandra_test with replication = {'class':'SimpleStrategy', 'replication_factor':3}"
+      s"create keyspace $keyspace with replication = {'class':'SimpleStrategy', 'replication_factor':3}"
     )
-    session.execute("create table kamon_cassandra_test.users (id uuid primary key, name text )")
+
+    session.execute(s"USE $keyspace")
+
+    session.execute("create table users (id uuid primary key, name text )")
     for (i <- 1 to 12) {
-      session.execute("insert into kamon_cassandra_test.users (id, name) values (uuid(), 'kamon')")
+      session.execute("insert into users (id, name) values (uuid(), 'kamon')")
     }
-    session.execute("USE kamon_cassandra_test")
   }
 
-  override protected def afterAll(): Unit = {
-    session.close()
-    EmbeddedCassandraServerHelper.getCluster.close()
-  }
 }

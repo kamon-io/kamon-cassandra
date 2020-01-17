@@ -18,9 +18,8 @@ object HostConnectionPoolMetrics {
   )
 
   val InFlight = Kamon.histogram(
-    name = poolPrefix + "in-flight",
-    description =
-      "Number of in-flight request on this connection measured at the moment a new query is issued"
+    name        = poolPrefix + "in-flight",
+    description = "Number of in-flight request on this connection measured at the moment a new query is issued"
   )
 
   val Errors = Kamon.counter(
@@ -43,9 +42,7 @@ object HostConnectionPoolMetrics {
     description = "Number of retried executions"
   )
 
-  class HostConnectionPoolInstruments(node: Node)
-      extends InstrumentGroup(CassandraInstrumentation.allTags(node)) {
-
+  class HostConnectionPoolInstruments(node: Node) extends InstrumentGroup(CassandraInstrumentation.allTags(node)) {
     val borrow:   Timer        = register(BorrowTime)
     val size:     RangeSampler = register(Size)
     val inFlight: Histogram    = register(InFlight)
