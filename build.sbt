@@ -13,41 +13,25 @@
  * =========================================================================================
  */
 
-val kamonCore      = "io.kamon" %% "kamon-core"      % "2.0.2"
-val kamonTestkit   = "io.kamon" %% "kamon-testkit"   % "2.0.2"
+val kamonCore      = "io.kamon" %% "kamon-core"      % "2.0.4"
+val kamonTestkit   = "io.kamon" %% "kamon-testkit"   % "2.0.4"
 val kamonExecutors = "io.kamon" %% "kamon-executors" % "2.0.2"
-
 val kanelaAgent     = "io.kamon" % "kanela-agent"                  % "1.0.4"
 val kamonInstrument = "io.kamon" %% "kamon-instrumentation-common" % "2.0.0"
 
 val cassandraDriver = "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0"
 val cassandraAll    = "org.apache.cassandra"   % "cassandra-all"         % "3.11.2"
 val cassandraUnit   = "org.cassandraunit"      % "cassandra-unit"        % "3.11.2.0"
-
 val logbackCore = "ch.qos.logback" % "logback-core" % "1.2.3"
-
-crossScalaVersions := Seq("2.11.12", "2.12.8", "2.13.1")
 
 lazy val cassandraClient = (project in file("."))
   .enablePlugins(JavaAgent)
-  .settings(bintrayPackage := "kamon-cassandra")
-  .settings(javaAgents += kanelaAgent % "test")
-  .settings(name := "kamon-cassandra-client")
-  .settings(resolvers += Resolver.bintrayRepo("kamon-io", "snapshots"))
-  .settings(resolvers += Resolver.mavenLocal)
+  .settings(instrumentationSettings)
   .settings(
+    name := "kamon-cassandra",
+    bintrayPackage := "kamon-cassandra",
     libraryDependencies ++=
-      compileScope(kamonCore, cassandraDriver, kamonInstrument, kamonExecutors) ++
-        providedScope(kanelaAgent) ++
-        testScope(
-          cassandraUnit,
-          kamonTestkit,
-          scalatest,
-          slf4jApi,
-          logbackClassic,
-          logbackCore,
-          "io.kamon" %% "kamon-apm-reporter" % "2.0.0"
-        )
+      compileScope(kamonCore, kamonInstrument, kamonExecutors) ++
+      providedScope(kanelaAgent, cassandraDriver) ++
+      testScope(cassandraUnit, kamonTestkit, scalatest, slf4jApi, logbackClassic, logbackCore)
   )
-
-fork in Test := true

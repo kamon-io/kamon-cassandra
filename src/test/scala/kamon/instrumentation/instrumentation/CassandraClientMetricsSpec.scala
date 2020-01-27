@@ -70,6 +70,7 @@ class CassandraClientMetricsSpec
         .withTags(
           TagSet.from(
             Map(
+              "component"            -> "cassandra.driver",
               "cassandra.query.kind" -> "select",
               "span.kind"            -> "client",
               "operation"            -> "query",
@@ -87,7 +88,7 @@ class CassandraClientMetricsSpec
               "operation"         -> "query.execution",
               "error"             -> false,
               "cassandra.cluster" -> "cluster1",
-              "component"         -> "cassandra.client"
+              "component"         -> "cassandra.driver"
             )
           )
         )

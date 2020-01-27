@@ -107,10 +107,9 @@ class CassandraClientTracingInstrumentationSpec
         clientSpan should not be empty
         executionSpans.size should equal(3)
 
-        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetch-size")) should equal(5L)
-        clientSpan.get.tags.get(plainLong("cassandra.client.rs.fetched")) should equal(5L)
-        clientSpan.get.tags.get(plainBoolean("cassandra.client.rs.has-more")) shouldBe true
-
+        clientSpan.get.tags.get(plainLong("cassandra.driver.rs.fetch-size")) should equal(5L)
+        clientSpan.get.tags.get(plainLong("cassandra.driver.rs.fetched")) should equal(5L)
+        clientSpan.get.tags.get(plainBoolean("cassandra.driver.rs.has-more")) shouldBe true
       }
     }
   }

@@ -1,3 +1,19 @@
+/*
+ *  ==========================================================================================
+ *  Copyright © 2013-2020 The Kamon Project <https://kamon.io/>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
+ *  except in compliance with the License. You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the
+ *  License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ *  either express or implied. See the License for the specific language governing permissions
+ *  and limitations under the License.
+ *  ==========================================================================================
+ */
+
 package com.datastax.driver.core
 
 import java.util.concurrent.TimeUnit
@@ -5,12 +21,13 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.util.concurrent.{FutureCallback, ListenableFuture}
 import kamon.Kamon
-import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, NodeMonitor, PoolWithMetrics}
+import kamon.instrumentation.cassandra.metrics.{HasPoolMetrics, NodeMonitor}
 import kamon.instrumentation.cassandra.CassandraInstrumentation
 import kamon.metric.Timer
 import kanela.agent.libs.net.bytebuddy.asm.Advice
 
 object PoolConstructorAdvice {
+
   @Advice.OnMethodExit
   def onConstructed(
       @Advice.This poolWithMetrics:                      HostConnectionPool with HasPoolMetrics,
@@ -18,17 +35,17 @@ object PoolConstructorAdvice {
       @Advice.FieldValue("totalInFlight") totalInflight: AtomicInteger
   ): Unit = {
     val clusterName      = poolWithMetrics.manager.getCluster.getClusterName
-    val node             = CassandraInstrumentation.nodeFromHost(host, clusterName)
+    val node             = CassandraInstrumentation.createNode(host, clusterName)
     val samplingInterval = CassandraInstrumentation.settings.sampleInterval.toMillis
 
-    poolWithMetrics.setMetrics(new NodeMonitor(node))
+    poolWithMetrics.setNodeMonitor(new NodeMonitor(node))
 
     val samplingSchedule = Kamon
       .scheduler()
       .scheduleAtFixedRate(
         new Runnable {
           override def run(): Unit = {
-            poolWithMetrics.getMetrics.recordInFlightSample(totalInflight.longValue())
+            poolWithMetrics.nodeMonitor.recordInFlightSample(totalInflight.longValue())
           }
         },
         samplingInterval,
@@ -41,16 +58,17 @@ object PoolConstructorAdvice {
 }
 
 object PoolCloseAdvice {
+
   @Advice.OnMethodExit
   def onClose(@Advice.This poolWithMetrics: HostConnectionPool with HasPoolMetrics): Unit = {
     Option(poolWithMetrics.getSampling).foreach(_.cancel(true))
   }
 }
 
-/*
- * Measure time spent waiting for a connection
- * Record number of inflight queries on just-aquired connection
- * */
+/**
+  * Measure time spent waiting for a connection
+  * Record number of in-flight queries on just-acquired connection
+  */
 object BorrowAdvice {
 
   @Advice.OnMethodEnter
@@ -70,7 +88,7 @@ object BorrowAdvice {
       connection,
       new FutureCallback[Connection]() {
         override def onSuccess(borrowedConnection: Connection): Unit = {
-          poolMetrics.getMetrics.recordBorrow(Kamon.clock().nanos() - start)
+          poolMetrics.nodeMonitor.recordBorrow(Kamon.clock().nanos() - start)
         }
         override def onFailure(t: Throwable): Unit = ()
       }
@@ -78,12 +96,13 @@ object BorrowAdvice {
   }
 }
 
-/*
- * Track number of active connections towards the given host
- * Incremented when new connection requested and decremented either on
- * connection being explicitly trashed or defunct
- * */
+/**
+  * Track number of active connections towards the given host
+  * Incremented when new connection requested and decremented either on
+  * connection being explicitly trashed or defunct
+  */
 object InitPoolAdvice {
+
   @Advice.OnMethodExit
   def onPoolInited(
       @Advice.This hasPoolMetrics:                HasPoolMetrics,
@@ -93,36 +112,39 @@ object InitPoolAdvice {
 
     done.addListener(new Runnable {
       override def run(): Unit = {
-        hasPoolMetrics.getMetrics.connectionsOpened(openConnections.get())
+        hasPoolMetrics.nodeMonitor.connectionsOpened(openConnections.get())
       }
     }, Kamon.scheduler())
   }
 }
 
 object CreateConnectionAdvice {
+
   @Advice.OnMethodExit
   def onConnectionCreated(
       @Advice.This hasPoolMetrics: HasPoolMetrics,
       @Advice.Return created:      Boolean
   ): Unit =
     if (created) {
-      hasPoolMetrics.getMetrics.connectionsOpened(1)
+      hasPoolMetrics.nodeMonitor.connectionsOpened(1)
     }
 }
 
 object TrashConnectionAdvice {
+
   @Advice.OnMethodExit
   def onConnectionTrashed(
       @Advice.This hasPoolMetrics:     HasPoolMetrics,
       @Advice.FieldValue("host") host: Host
   ): Unit = {
-    hasPoolMetrics.getMetrics.connectionTrashed
+    hasPoolMetrics.nodeMonitor.connectionTrashed
   }
 }
 
 object ConnectionDefunctAdvice {
+
   @Advice.OnMethodExit
   def onConnectionDefunct(@Advice.This hasPoolMetrics: HasPoolMetrics): Unit = {
-    hasPoolMetrics.getMetrics.connectionClosed
+    hasPoolMetrics.nodeMonitor.connectionClosed
   }
 }

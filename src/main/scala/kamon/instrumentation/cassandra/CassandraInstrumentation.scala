@@ -1,3 +1,19 @@
+/*
+ *  ==========================================================================================
+ *  Copyright © 2013-2020 The Kamon Project <https://kamon.io/>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file
+ *  except in compliance with the License. You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the
+ *  License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ *  either express or implied. See the License for the specific language governing permissions
+ *  and limitations under the License.
+ *  ==========================================================================================
+ */
+
 package kamon.instrumentation.cassandra
 
 import com.datastax.driver.core.Host
@@ -14,45 +30,11 @@ import scala.concurrent.duration.Duration
 
 object CassandraInstrumentation {
 
-  case class Node(address: String, dc: String, rack: String, cluster: String)
-
-  case class Settings(
-      sampleInterval: Duration,
-      poolMetrics:    Boolean,
-      host:           TagMode,
-      rack:           TagMode,
-      dc:             TagMode,
-      cluster:        TagMode
-  )
-
-  object Tags {
-    val Host        = "cassandra.host"
-    val DC          = "cassandra.dc"
-    val Rack        = "cassandra.rack"
-    val Cluster     = "cassandra.cluster"
-    val ErrorSource = "source"
-  }
-  @volatile var settings: Settings = loadConfig(Kamon.config())
-
   private val UnknownTargetTagValue = "unknown"
+  @volatile var settings: Settings = readSettings(Kamon.config())
+  Kamon.onReconfigure(newConfig => settings = readSettings(newConfig))
 
-  def loadConfig(config: Config) = Settings(
-    sampleInterval = Duration.fromNanos(
-      config.getDuration("kamon.cassandra.sample-interval").toNanos
-    ),
-    poolMetrics = config.getBoolean("kamon.cassandra.track-pool-metrics"),
-    host        = TagMode.from(config.getString("kamon.cassandra.tracing.tag.host")),
-    rack        = TagMode.from(config.getString("kamon.cassandra.tracing.tag.rack")),
-    dc          = TagMode.from(config.getString("kamon.cassandra.tracing.tag.dc")),
-    cluster     = TagMode.from(config.getString("kamon.cassandra.tracing.tag.cluster"))
-  )
-
-  Kamon.onReconfigure(new OnReconfigureHook {
-    override def onReconfigure(newConfig: Config): Unit =
-      settings = loadConfig(newConfig)
-  })
-
-  def nodeFromHost(host: Host, cluster: String): Node = {
+  def createNode(host: Host, cluster: String): Node = {
     Node(
       host.getAddress.getHostAddress,
       Option(host.getDatacenter).getOrElse(UnknownTargetTagValue),
@@ -61,7 +43,7 @@ object CassandraInstrumentation {
     )
   }
 
-  def allTags(node: Node): TagSet =
+  def createNodeTags(node: Node): TagSet =
     TagSet.from(
       Map(
         Tags.Host    -> node.address,
@@ -71,22 +53,43 @@ object CassandraInstrumentation {
       )
     )
 
-  def nodeMetricTags(node: Node): TagSet = {
-    val metricEnabledTags = Seq(
-      (Tags.Host, node.address, settings.host),
-      (Tags.DC, node.dc, settings.dc),
-      (Tags.Rack, node.rack, settings.rack),
-      (Tags.Cluster, node.cluster, settings.cluster)
-    ).filter(_._3 == TagMode.Metric).map { case (tag, value, _) => tag -> value }.toMap
-
-    TagSet.from(metricEnabledTags)
-  }
-
   def tagSpanWithNode(node: Node, span: Span): Unit = {
-    SpanTagger.tag(span, Tags.Host, node.address, settings.host)
-    SpanTagger.tag(span, Tags.DC, node.dc, settings.dc)
-    SpanTagger.tag(span, Tags.Rack, node.rack, settings.rack)
-    SpanTagger.tag(span, Tags.Cluster, node.cluster, settings.cluster)
+    SpanTagger.tag(span, Tags.Host, node.address, settings.hostTagMode)
+    SpanTagger.tag(span, Tags.DC, node.dc, settings.dcTagMode)
+    SpanTagger.tag(span, Tags.Rack, node.rack, settings.rackTagMode)
+    SpanTagger.tag(span, Tags.Cluster, node.cluster, settings.clusterTagMode)
   }
 
+  private def readSettings(config: Config) = {
+    val cassandraConfig = config.getConfig("kamon.instrumentation.cassandra")
+
+    Settings(
+      sampleInterval                 = Duration.fromNanos(cassandraConfig.getDuration("metrics.sample-interval").toNanos),
+      trackHostConnectionPoolMetrics = cassandraConfig.getBoolean("metrics.track-host-connection-pool-metrics"),
+      hostTagMode                    = TagMode.from(cassandraConfig.getString("tracing.tags.host")),
+      rackTagMode                    = TagMode.from(cassandraConfig.getString("tracing.tags.rack")),
+      dcTagMode                      = TagMode.from(cassandraConfig.getString("tracing.tags.dc")),
+      clusterTagMode                 = TagMode.from(cassandraConfig.getString("tracing.tags.cluster"))
+    )
+  }
+
+  case class Node(address: String, dc: String, rack: String, cluster: String)
+
+  case class Settings(
+      sampleInterval:                 Duration,
+      trackHostConnectionPoolMetrics: Boolean,
+      hostTagMode:                    TagMode,
+      rackTagMode:                    TagMode,
+      dcTagMode:                      TagMode,
+      clusterTagMode:                 TagMode
+  )
+
+  object Tags {
+    val CassandraDriverComponent = "cassandra.driver"
+    val Host                     = "cassandra.host"
+    val DC                       = "cassandra.dc"
+    val Rack                     = "cassandra.rack"
+    val Cluster                  = "cassandra.cluster"
+    val ErrorSource              = "source"
+  }
 }
